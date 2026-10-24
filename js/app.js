@@ -15,6 +15,7 @@ const ui = {
   homeError: $('home-error'),
   history: $('history'),
   progress: $('progress'),
+  data: $('data'),
   video: $('video'),
   canvas: $('overlay'),
   exTitle: $('ex-title'),
@@ -35,7 +36,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 11;
+const APP_VERSION = 12;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -95,7 +96,7 @@ function showHomeError(text) {
 }
 
 function showScreen(name) {
-  for (const key of ['home', 'history', 'progress', 'summary', 'workout']) ui[key].classList.toggle('hidden', key !== name);
+  for (const key of ['home', 'history', 'progress', 'data', 'summary', 'workout']) ui[key].classList.toggle('hidden', key !== name);
   window.scrollTo(0, 0);
 }
 

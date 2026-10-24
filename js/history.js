@@ -102,6 +102,7 @@ export async function refresh() {
     sets = [];
   }
   renderGoal();
+  renderToday();
   renderRecords();
   renderWeek();
   renderStreak();
@@ -182,16 +183,31 @@ const GOAL_RING = 264; // 2π · 42
 function renderGoal() {
   const goal = todayGoal();
   const done = todayReps();
-  const p = Math.min(1, done / goal.value);
-  $('goal-arc').style.strokeDashoffset = String(GOAL_RING * (1 - p));
-  $('goal-pct').textContent = `${Math.round(p * 100)}%`;
+  const ratio = done / goal.value;
+  // Первый круг — до цели. Перевыполнение рисуется вторым, «огненным» кругом поверх.
+  $('goal-arc').style.strokeDashoffset = String(GOAL_RING * (1 - Math.min(1, ratio)));
+  const extra = ratio > 1 ? Math.min(1, ratio - 1) : 0;
+  $('goal-over').style.strokeDashoffset = String(GOAL_RING * (1 - extra));
+  $('goal-pct').textContent = `${Math.round(ratio * 100)}%`;
   $('goal-done').textContent = done;
   $('goal-target').textContent = goal.value;
-  $('goal-card').classList.toggle('done', done >= goal.value);
+  const card = $('goal-card');
+  card.classList.toggle('done', ratio >= 1);
+  card.classList.toggle('over', ratio > 1);
+  card.classList.toggle('blaze', ratio >= 2);
   const left = goal.value - done;
-  $('goal-note').textContent = left > 0
-    ? `Осталось ${left}${goal.todayOnly ? ', цель только на сегодня' : ''}`
-    : 'Цель выполнена!';
+  const note = $('goal-note');
+  if (left > 0) note.textContent = `Осталось ${left}${goal.todayOnly ? ', цель только на сегодня' : ''}`;
+  else if (left === 0) note.textContent = 'Цель выполнена!';
+  else note.textContent = `🔥 Перевыполнено на ${-left} (+${Math.round((ratio - 1) * 100)}%)`;
+}
+
+// Журнал за сегодня на главном экране.
+function renderToday() {
+  const key = todayKey();
+  const list = sets.filter((s) => dayKey(s.startedAt) === key);
+  $('today').classList.toggle('hidden', list.length === 0);
+  $('today-list').replaceChildren(...list.map(setRow));
 }
 
 function openGoal() {
@@ -613,6 +629,12 @@ export function initHistory({ show }) {
   $('progress-back').addEventListener('click', () => showScreen('home'));
   $('goal-card').addEventListener('click', openGoal);
   $('settings-goal').addEventListener('click', openGoal);
+  $('settings-data').addEventListener('click', () => {
+    $('settings').close();
+    showScreen('data');
+    renderBackupInfo();
+  });
+  $('data-back').addEventListener('click', () => showScreen('home'));
   $('goal-minus').addEventListener('click', () => stepGoal(-10));
   $('goal-plus').addEventListener('click', () => stepGoal(10));
   $('goal-cancel').addEventListener('click', () => $('goal-dialog').close());

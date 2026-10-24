@@ -55,7 +55,15 @@
       <span class="goal-ring">
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <circle class="goal-track" cx="50" cy="50" r="42"/>
+          <defs>
+            <linearGradient id="fire" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#FFD23F"/>
+              <stop offset="0.5" stop-color="#FF7A1A"/>
+              <stop offset="1" stop-color="#FF2D55"/>
+            </linearGradient>
+          </defs>
           <circle id="goal-arc" class="goal-arc" cx="50" cy="50" r="42"/>
+          <circle id="goal-over" class="goal-over" cx="50" cy="50" r="42"/>
         </svg>
         <b id="goal-pct">0%</b>
       </span>
@@ -96,9 +104,14 @@
 
     <p id="home-error" class="error hidden"></p>
 
+    <section id="today" class="card hidden">
+      <h2>Сегодня</h2>
+      <ol id="today-list" class="set-list"></ol>
+    </section>
+
     <div class="home-links">
       <button id="open-progress" class="secondary">Прогресс</button>
-      <button id="open-history" class="secondary">История и облако</button>
+      <button id="open-history" class="secondary">Журнал</button>
     </div>
 
     <p id="version" class="version"></p>
@@ -142,7 +155,18 @@
     <header class="topbar">
       <button id="history-back" class="back-btn">‹ Назад</button>
     </header>
-    <h1 class="page-title">История</h1>
+    <h1 class="page-title">Журнал</h1>
+
+    <p id="history-empty" class="hint">Пока нет ни одного подхода. Они появятся здесь после тренировки.</p>
+    <div id="history-days"></div>
+  </section>
+
+  <!-- Облако и резервная копия (из настроек) -->
+  <section id="data" class="screen page hidden">
+    <header class="topbar">
+      <button id="data-back" class="back-btn">‹ Назад</button>
+    </header>
+    <h1 class="page-title">Облако и копия</h1>
 
     <section class="card cloud">
       <h2>Облако</h2>
@@ -177,8 +201,6 @@
       <input id="import-file" type="file" accept=".json,application/json" hidden>
     </section>
 
-    <p id="history-empty" class="hint">Пока нет ни одного подхода. Они появятся здесь после тренировки.</p>
-    <div id="history-days"></div>
   </section>
 
   <!-- Итоги тренировки -->
@@ -334,6 +356,7 @@
       </details>
 
       <button type="button" id="settings-goal" class="secondary">Цель на день…</button>
+      <button type="button" id="settings-data" class="secondary">Облако и резервная копия…</button>
 
       <fieldset>
         <legend>Подход</legend>
