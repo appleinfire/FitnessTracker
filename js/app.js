@@ -45,8 +45,11 @@ let stream = null;
 let rafId = 0;
 let pose = null;
 let analyzer = null;
-const smoother = new Smoother(120);
-const counter = new RepCounter(120);
+// Сглаживание и задержка подобраны так, чтобы успевать за быстрыми повторениями.
+const smoother = new Smoother(50);
+const counter = new RepCounter(60);
+// Самая «глубокая» точка последнего движения — для проверки порогов.
+let depth = { cur: null, raw: null, last: null, lastRaw: null };
 let lastVideoTime = -1;
 let set = null;
 let lastSeenAt = 0;
@@ -177,6 +180,7 @@ async function startWorkout() {
   counter.reset();
   smoother.reset();
   analyzer.reset();
+  depth = { cur: null, raw: null, last: null, lastRaw: null };
   lastSeenAt = performance.now();
   fps = { frames: 0, since: performance.now(), value: 0 };
   running = true;
@@ -348,6 +352,7 @@ function loop() {
   lastSeenAt = t;
   const value = smoother.update(info.value, t);
   if (value != null && counter.update(value, t, info.rule, analyzer.countOn)) onRep(t);
+  trackDepth(info, value);
 
   const phase = counter.phase;
   const color = phase === 'work' ? '#ff7a45' : '#c8ff3d';
@@ -399,6 +404,21 @@ function countFps(t) {
   }
 }
 
+function trackDepth(info, value) {
+  if (value == null || info.value == null) return;
+  const { dir, rest } = info.rule;
+  const deeper = (a, b) => (a == null ? b : dir === 'below' ? Math.min(a, b) : Math.max(a, b));
+  const inRest = dir === 'below' ? value >= rest : value <= rest;
+  if (!inRest) {
+    depth.cur = deeper(depth.cur, value);
+    depth.raw = deeper(depth.raw, info.value);
+  } else if (depth.cur != null) {
+    depth.last = depth.cur;
+    depth.lastRaw = depth.raw;
+    depth.cur = depth.raw = null;
+  }
+}
+
 function updateDebug(info, value) {
   ui.debug.classList.toggle('hidden', !settings.debug);
   if (!settings.debug) return;
@@ -409,6 +429,7 @@ function updateDebug(info, value) {
     const [wSign, rSign] = dir === 'below' ? ['<', '>'] : ['>', '<'];
     for (const [label, v, unit] of info.metrics) parts.push(`${label} ${f(v, unit)}`);
     parts.push(`сглаж. ${f(value, info.unit)} (работа ${wSign} ${work}, отдых ${rSign} ${rest})`);
+    if (depth.last != null) parts.push(`предел движения ${f(depth.last, info.unit)} (без сглаж. ${f(depth.lastRaw, info.unit)})`);
   }
   parts.push(`${fps.value} к/с`, pose?.delegate === 'GPU' ? 'GPU' : 'CPU');
   if (wakeMode !== 'wakelock') parts.push(wakeMode === 'video' ? 'экран: запасной режим' : 'экран может погаснуть');

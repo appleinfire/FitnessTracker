@@ -160,11 +160,13 @@ h2 { font-size: 20px; margin: 0 0 10px; }
   color: #fff;
   -webkit-text-stroke: max(3px, 0.6vmin) #000;
   text-shadow: 0 0 2vmin rgba(0, 0, 0, 0.7);
+  /* Полупрозрачный, чтобы сквозь цифру было видно человека */
+  opacity: 0.45;
   pointer-events: none;
   z-index: 2;
-  transition: transform 120ms ease-out, color 120ms;
+  transition: transform 120ms ease-out, color 120ms, opacity 120ms;
 }
-.counter.bump { transform: scale(1.12); color: var(--accent); }
+.counter.bump { transform: scale(1.12); color: var(--accent); opacity: 0.8; }
 
 .set-timer {
   position: absolute; left: 0; right: 0;
@@ -191,7 +193,6 @@ h2 { font-size: 20px; margin: 0 0 10px; }
   position: absolute; left: 0; right: 0; bottom: 0;
   height: 0;
   background: var(--accent);
-  transition: height 60ms linear;
 }
 .meter-fill.work { background: var(--down); }
 .meter-mark { position: absolute; left: 0; right: 0; height: 3px; background: #fff; }
