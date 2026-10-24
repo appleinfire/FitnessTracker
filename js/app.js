@@ -3,7 +3,7 @@ import { RepCounter, Smoother } from './counter.js';
 import { EXERCISES } from './exercises.js';
 import { getLandmarker, drawPose } from './pose.js';
 import { KeepAwake, Sound } from './device.js';
-import { initHistory, recordSet, showSummary } from './history.js';
+import { initHistory, recordSet, showSummary, bestSet, todayReps, currentGoal } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,6 +14,7 @@ const ui = {
   stop: $('stop'),
   homeError: $('home-error'),
   history: $('history'),
+  progress: $('progress'),
   video: $('video'),
   canvas: $('overlay'),
   exTitle: $('ex-title'),
@@ -34,7 +35,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -94,7 +95,7 @@ function showHomeError(text) {
 }
 
 function showScreen(name) {
-  for (const key of ['home', 'history', 'summary', 'workout']) ui[key].classList.toggle('hidden', key !== name);
+  for (const key of ['home', 'history', 'progress', 'summary', 'workout']) ui[key].classList.toggle('hidden', key !== name);
   window.scrollTo(0, 0);
 }
 
@@ -284,7 +285,12 @@ function updateSetClock() {
 
 let repTimer = 0;
 function onRep(t) {
-  if (set.reps === 0) set.startedAt = new Date();
+  if (set.reps === 0) {
+    set.startedAt = new Date();
+    // С чем сравнивать этот подход: лучший результат и сколько уже сделано сегодня.
+    set.best = bestSet(exerciseKey);
+    set.dayBefore = todayReps();
+  }
   set.reps += 1;
   set.lastRepAt = t;
   ui.counter.textContent = String(set.reps);
@@ -296,6 +302,27 @@ function onRep(t) {
   repTimer = setTimeout(() => ui.ring.classList.remove('rep'), 450);
   if (settings.voice) sound.say(String(set.reps));
   else if (settings.beep) sound.beep(880, 120);
+  announceWins();
+}
+
+// «Новый рекорд!» и «Цель на день выполнена!» — по одному разу за подход.
+function announceWins() {
+  if (!set.recordShown && set.best > 0 && set.reps > set.best) {
+    set.recordShown = true;
+    showToast(`Новый рекорд!\n${set.reps} за подход`);
+    celebrate('Новый рекорд');
+  }
+  const goal = currentGoal();
+  if (!set.goalShown && set.dayBefore < goal && set.dayBefore + set.reps >= goal) {
+    set.goalShown = true;
+    showToast(`Цель на день выполнена!\n${set.dayBefore + set.reps} из ${goal}`);
+    celebrate('Цель на день выполнена');
+  }
+}
+
+function celebrate(words) {
+  if (settings.voice) setTimeout(() => sound.say(words), 700);
+  else if (settings.beep) [784, 988, 1319].forEach((f, i) => sound.beep(f, 140, 0.15 + i * 0.12));
 }
 
 function finishSet(reason) {

@@ -49,12 +49,26 @@
 
     <section class="hero">
       <h1>Каждый повтор на&nbsp;счету</h1>
-      <div id="streak" class="streak hidden">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 12 18a5 5 0 0 1-5-5.5c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-6 1-9z"/></svg>
-        <b id="streak-days"></b>
-        <span id="streak-label"></span>
-      </div>
     </section>
+
+    <button id="goal-card" class="card goal-card" aria-label="Цель на сегодня. Изменить">
+      <span class="goal-ring">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="goal-track" cx="50" cy="50" r="42"/>
+          <circle id="goal-arc" class="goal-arc" cx="50" cy="50" r="42"/>
+        </svg>
+        <b id="goal-pct">0%</b>
+      </span>
+      <span class="goal-text">
+        <span class="goal-label">Цель на сегодня</span>
+        <span class="goal-nums"><b id="goal-done">0</b> из <span id="goal-target">100</span></span>
+        <span id="goal-note" class="goal-note"></span>
+        <span id="streak" class="streak-line hidden">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 12 18a5 5 0 0 1-5-5.5c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-6 1-9z"/></svg>
+          <b id="streak-days"></b> <span id="streak-label"></span>
+        </span>
+      </span>
+    </button>
 
     <div class="exercise-list" role="radiogroup" aria-label="Упражнение">
       <button class="exercise ex-pushup" data-exercise="pushup" role="radio" aria-checked="false">
@@ -82,6 +96,21 @@
 
     <p id="home-error" class="error hidden"></p>
 
+    <div class="home-links">
+      <button id="open-progress" class="secondary">Прогресс</button>
+      <button id="open-history" class="secondary">История и облако</button>
+    </div>
+
+    <p id="version" class="version"></p>
+  </main>
+
+  <!-- Прогресс: неделя, рекорды, достижения -->
+  <section id="progress" class="screen page hidden">
+    <header class="topbar">
+      <button id="progress-back" class="back-btn">‹ Назад</button>
+    </header>
+    <h1 class="page-title">Прогресс</h1>
+
     <section class="card week">
       <div class="week-head">
         <h2>Эта неделя</h2>
@@ -89,6 +118,12 @@
       </div>
       <p id="week-delta" class="week-delta"></p>
       <div id="week-chart" class="week-chart" role="list" aria-label="Повторения по дням недели"></div>
+    </section>
+
+    <section class="card">
+      <h2>Личные рекорды</h2>
+      <ul id="records" class="breakdown"></ul>
+      <p id="records-empty" class="hint">Рекорды появятся после первой тренировки.</p>
     </section>
 
     <section class="card">
@@ -100,16 +135,7 @@
       <p id="ach-tip" class="hint ach-tip"></p>
     </section>
 
-    <section id="today" class="card hidden">
-      <h2>Сегодня</h2>
-      <div id="today-totals" class="totals"></div>
-      <ol id="today-list" class="set-list"></ol>
-    </section>
-
-    <button id="open-history" class="secondary">История и облако</button>
-
-    <p id="version" class="version"></p>
-  </main>
+  </section>
 
   <!-- История -->
   <section id="history" class="screen page hidden">
@@ -170,6 +196,10 @@
       <div class="stat"><b id="summary-sets">0</b><span id="summary-sets-label">Подходов</span></div>
       <div class="stat"><b id="summary-streak">1</b><span id="summary-streak-label">День подряд</span></div>
     </div>
+
+    <section id="summary-wins" class="card ach-new hidden">
+      <ul id="summary-wins-list" class="wins"></ul>
+    </section>
 
     <section id="summary-ach" class="card ach-new hidden">
       <h2>Новые достижения</h2>
@@ -303,6 +333,8 @@
         </fieldset>
       </details>
 
+      <button type="button" id="settings-goal" class="secondary">Цель на день…</button>
+
       <fieldset>
         <legend>Подход</legend>
         <label class="range">Закончить, если нет повторений <output data-for="setEndSec"></output> с
@@ -327,6 +359,23 @@
         <button value="close" class="primary">Готово</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Цель на день -->
+  <dialog id="goal-dialog">
+    <div class="edit-box">
+      <h2>Цель на день</h2>
+      <p class="hint">Сколько повторений сделать за день — всех упражнений вместе.</p>
+      <div class="stepper">
+        <button id="goal-minus" class="secondary" aria-label="Меньше">−</button>
+        <input id="goal-input" type="number" inputmode="numeric" min="1" max="5000" aria-label="Цель">
+        <button id="goal-plus" class="secondary" aria-label="Больше">+</button>
+      </div>
+      <button id="goal-daily" class="primary">Каждый день</button>
+      <button id="goal-today" class="secondary">Только на сегодня</button>
+      <p id="goal-dialog-note" class="hint"></p>
+      <button id="goal-cancel" class="secondary">Отмена</button>
+    </div>
   </dialog>
 
   <!-- Правка подхода -->

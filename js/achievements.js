@@ -60,22 +60,22 @@ function summarize(sets) {
 }
 
 export const ACHIEVEMENTS = [
-  { id: 'first', icon: '🚀', name: 'Старт', desc: 'Первый подход', test: (s) => s.count >= 1 },
-  { id: 'set10', icon: '🔟', name: 'Десятка', desc: '10 повторений за подход', test: (s) => s.bestSet >= 10 },
-  { id: 'set25', icon: '💪', name: 'Мощь', desc: '25 повторений за подход', test: (s) => s.bestSet >= 25 },
-  { id: 'set50', icon: '🦾', name: 'Машина', desc: '50 повторений за подход', test: (s) => s.bestSet >= 50 },
-  { id: 'day100', icon: '💯', name: 'Сотня', desc: '100 повторений за день', test: (s) => s.bestDayReps >= 100 },
-  { id: 'day5sets', icon: '🔥', name: 'Пять подходов', desc: '5 подходов за день', test: (s) => s.bestDaySets >= 5 },
-  { id: 'trio', icon: '🎯', name: 'Всё и сразу', desc: 'Все три упражнения за день', test: (s) => s.allThreeInDay },
-  { id: 'streak3', icon: '📅', name: 'Три дня подряд', desc: 'Тренировки 3 дня подряд', test: (s) => s.longest >= 3 },
-  { id: 'streak7', icon: '🗓️', name: 'Неделя', desc: 'Тренировки 7 дней подряд', test: (s) => s.longest >= 7 },
-  { id: 'pullup100', icon: '🧗', name: 'Турникмен', desc: '100 подтягиваний всего', test: (s) => s.totals.pullup >= 100 },
-  { id: 'pushup500', icon: '🛡️', name: 'Стальные руки', desc: '500 отжиманий всего', test: (s) => s.totals.pushup >= 500 },
-  { id: 'squat1000', icon: '🦵', name: 'Железные ноги', desc: '1000 приседаний всего', test: (s) => s.totals.squat >= 1000 },
-  { id: 'total1000', icon: '🏅', name: 'Тысячник', desc: '1000 повторений всего', test: (s) => s.totals.all >= 1000 },
-  { id: 'total10000', icon: '🏆', name: 'Легенда', desc: '10 000 повторений всего', test: (s) => s.totals.all >= 10000 },
-  { id: 'early', icon: '🌅', name: 'Ранняя пташка', desc: 'Подход до 8 утра', test: (s) => s.early },
-  { id: 'late', icon: '🌙', name: 'Сова', desc: 'Подход после 22:00', test: (s) => s.late },
+  { id: 'first', icon: '🚀', name: 'Kickoff', desc: 'Первый подход', test: (s) => s.count >= 1 },
+  { id: 'set10', icon: '🔟', name: 'Ten Up', desc: '10 повторений за подход', test: (s) => s.bestSet >= 10 },
+  { id: 'set25', icon: '💪', name: 'Power Set', desc: '25 повторений за подход', test: (s) => s.bestSet >= 25 },
+  { id: 'set50', icon: '🦾', name: 'Machine', desc: '50 повторений за подход', test: (s) => s.bestSet >= 50 },
+  { id: 'day100', icon: '💯', name: 'Century', desc: '100 повторений за день', test: (s) => s.bestDayReps >= 100 },
+  { id: 'day5sets', icon: '🔥', name: 'High Five', desc: '5 подходов за день', test: (s) => s.bestDaySets >= 5 },
+  { id: 'trio', icon: '🎯', name: 'All-In', desc: 'Все три упражнения за день', test: (s) => s.allThreeInDay },
+  { id: 'streak3', icon: '📅', name: 'Three-Peat', desc: 'Тренировки 3 дня подряд', test: (s) => s.longest >= 3 },
+  { id: 'streak7', icon: '🗓️', name: 'Full Week', desc: 'Тренировки 7 дней подряд', test: (s) => s.longest >= 7 },
+  { id: 'pullup100', icon: '🧗', name: 'Bar Boss', desc: '100 подтягиваний всего', test: (s) => s.totals.pullup >= 100 },
+  { id: 'pushup500', icon: '🛡️', name: 'Iron Arms', desc: '500 отжиманий всего', test: (s) => s.totals.pushup >= 500 },
+  { id: 'squat1000', icon: '🦵', name: 'Steel Legs', desc: '1000 приседаний всего', test: (s) => s.totals.squat >= 1000 },
+  { id: 'total1000', icon: '🏅', name: 'Grinder', desc: '1000 повторений всего', test: (s) => s.totals.all >= 1000 },
+  { id: 'total10000', icon: '🏆', name: 'Legend', desc: '10 000 повторений всего', test: (s) => s.totals.all >= 10000 },
+  { id: 'early', icon: '🌅', name: 'Early Bird', desc: 'Подход до 8 утра', test: (s) => s.early },
+  { id: 'late', icon: '🌙', name: 'Night Owl', desc: 'Подход после 22:00', test: (s) => s.late },
 ];
 
 export function unlockedIds(sets) {

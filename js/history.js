@@ -4,6 +4,7 @@
 import { addSet, updateSet, deleteSet, allSets, importSets } from './db.js';
 import { EXERCISE_NAMES } from './exercises.js';
 import { ACHIEVEMENTS, unlockedIds, unseen, markSeen } from './achievements.js';
+import { todayGoal, setDailyGoal, setTodayGoal } from './goal.js';
 import {
   initCloud, onCloudChange, cloudState, isSignedIn, signIn, signOut, sync, syncSoon,
 } from './cloud.js';
@@ -100,7 +101,8 @@ export async function refresh() {
     console.error(err);
     sets = [];
   }
-  renderToday();
+  renderGoal();
+  renderRecords();
   renderWeek();
   renderStreak();
   renderAchievements();
@@ -156,15 +158,59 @@ export async function recordSet(record) {
   }
 }
 
-// ---------- Главный экран: сегодня ----------
+// ---------- Главный экран: цель на день ----------
 
-function renderToday() {
-  const today = dayKey(new Date().toISOString());
-  const list = sets.filter((s) => dayKey(s.startedAt) === today);
-  $('today').classList.toggle('hidden', list.length === 0);
-  renderTotals($('today-totals'), list);
-  const ol = $('today-list');
-  ol.replaceChildren(...list.map(setRow));
+const todayKey = () => dayKey(new Date().toISOString());
+
+// Повторений сегодня (всех упражнений).
+export function todayReps() {
+  const key = todayKey();
+  return sets.filter((s) => dayKey(s.startedAt) === key).reduce((a, s) => a + s.reps, 0);
+}
+
+// Лучший подход в упражнении (0, если подходов ещё не было).
+export function bestSet(exercise, before = null) {
+  return sets
+    .filter((s) => s.exercise === exercise && (!before || new Date(s.startedAt) < before))
+    .reduce((m, s) => Math.max(m, s.reps), 0);
+}
+
+export const currentGoal = () => todayGoal().value;
+
+const GOAL_RING = 264; // 2π · 42
+
+function renderGoal() {
+  const goal = todayGoal();
+  const done = todayReps();
+  const p = Math.min(1, done / goal.value);
+  $('goal-arc').style.strokeDashoffset = String(GOAL_RING * (1 - p));
+  $('goal-pct').textContent = `${Math.round(p * 100)}%`;
+  $('goal-done').textContent = done;
+  $('goal-target').textContent = goal.value;
+  $('goal-card').classList.toggle('done', done >= goal.value);
+  const left = goal.value - done;
+  $('goal-note').textContent = left > 0
+    ? `Осталось ${left}${goal.todayOnly ? ', цель только на сегодня' : ''}`
+    : 'Цель выполнена!';
+}
+
+function openGoal() {
+  const goal = todayGoal();
+  $('goal-input').value = goal.value;
+  $('goal-dialog-note').textContent = goal.todayOnly
+    ? `Сегодня цель изменена. Обычная — ${goal.daily} в день.`
+    : '«Только на сегодня» — завтра вернётся цель «каждый день».';
+  if ($('settings').open) $('settings').close();
+  $('goal-dialog').showModal();
+}
+
+function goalValue() {
+  const v = parseInt($('goal-input').value, 10);
+  return Number.isFinite(v) && v > 0 ? Math.min(v, 5000) : null;
+}
+
+function stepGoal(delta) {
+  $('goal-input').value = Math.max(5, (goalValue() || 0) + delta);
 }
 
 // ---------- Главный экран: неделя и серия ----------
@@ -250,9 +296,55 @@ function renderStreak() {
   $('streak-label').textContent = `${plural(n, 'день', 'дня', 'дней')} подряд`;
 }
 
+// ---------- Прогресс: личные рекорды ----------
+
+function renderRecords() {
+  $('records-empty').classList.toggle('hidden', sets.length > 0);
+  const rows = Object.keys(EXERCISE_NAMES).filter((ex) => sets.some((s) => s.exercise === ex)).map((ex) => {
+    const mine = sets.filter((s) => s.exercise === ex);
+    const days = new Map();
+    for (const s of mine) days.set(dayKey(s.startedAt), (days.get(dayKey(s.startedAt)) || 0) + s.reps);
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    name.textContent = nameOf(ex);
+    const sub = document.createElement('span');
+    sub.className = 'sub';
+    const total = mine.reduce((a, s) => a + s.reps, 0);
+    sub.textContent = `Лучший день ${Math.max(...days.values())}, всего ${total}`;
+    name.append(sub);
+    const b = document.createElement('b');
+    b.className = 'record';
+    b.textContent = bestSet(ex);
+    const cap = document.createElement('small');
+    cap.textContent = 'за подход';
+    b.append(cap);
+    li.append(exerciseIcon(ex), name, b);
+    return li;
+  });
+  $('records').replaceChildren(...rows);
+}
+
 // ---------- Итоги тренировки ----------
 
 export function showSummary(records, startedAt, endedAt) {
+  // Личные рекорды и цель — то, чего добились на этой тренировке.
+  const wins = [];
+  for (const ex of new Set(records.map((r) => r.exercise))) {
+    const best = Math.max(...records.filter((r) => r.exercise === ex).map((r) => r.reps));
+    const before = bestSet(ex, startedAt);
+    if (before > 0 && best > before) wins.push(`⚡ Новый рекорд: ${nameOf(ex)} — ${best} за подход (было ${before})`);
+  }
+  const goal = currentGoal();
+  const sessionReps = records.reduce((a, r) => a + r.reps, 0);
+  const doneToday = todayReps();
+  if (doneToday >= goal && doneToday - sessionReps < goal) wins.push(`🎯 Цель на день выполнена: ${doneToday} из ${goal}`);
+  $('summary-wins').classList.toggle('hidden', wins.length === 0);
+  $('summary-wins-list').replaceChildren(...wins.map((w) => {
+    const li = document.createElement('li');
+    li.textContent = w;
+    return li;
+  }));
+
   const total = records.reduce((a, r) => a + r.reps, 0);
   $('summary-total').textContent = total;
   $('summary-total-label').textContent = plural(total, 'повторение', 'повторения', 'повторений');
@@ -517,6 +609,27 @@ export function initHistory({ show }) {
   showScreen = show;
   $('open-history').addEventListener('click', () => { showScreen('history'); refresh(); });
   $('history-back').addEventListener('click', () => showScreen('home'));
+  $('open-progress').addEventListener('click', () => { showScreen('progress'); refresh(); });
+  $('progress-back').addEventListener('click', () => showScreen('home'));
+  $('goal-card').addEventListener('click', openGoal);
+  $('settings-goal').addEventListener('click', openGoal);
+  $('goal-minus').addEventListener('click', () => stepGoal(-10));
+  $('goal-plus').addEventListener('click', () => stepGoal(10));
+  $('goal-cancel').addEventListener('click', () => $('goal-dialog').close());
+  $('goal-daily').addEventListener('click', () => {
+    const v = goalValue();
+    if (!v) return;
+    setDailyGoal(v);
+    $('goal-dialog').close();
+    renderGoal();
+  });
+  $('goal-today').addEventListener('click', () => {
+    const v = goalValue();
+    if (!v) return;
+    setTodayGoal(v);
+    $('goal-dialog').close();
+    renderGoal();
+  });
   $('summary-done').addEventListener('click', () => showScreen('home'));
   $('export-json').addEventListener('click', exportJson);
   $('export-csv').addEventListener('click', exportCsv);
