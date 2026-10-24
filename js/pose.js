@@ -71,6 +71,7 @@ export function drawPose(ctx, lm, { highlight = [], highlightColor = '#c8ff3d' }
   if (shown(lm[0])) {
     ctx.beginPath();
     ctx.arc(lm[0].x * w, lm[0].y * h, unit * 4, 0, Math.PI * 2);
+    if (hl.has(0)) ctx.strokeStyle = highlightColor;
     ctx.stroke();
   }
 

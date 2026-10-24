@@ -137,8 +137,8 @@ h2 { font-size: 20px; margin: 0 0 10px; }
   font-size: 17px; font-weight: 600;
 }
 .status.warn { color: #ffd166; }
-.status.down { color: var(--down); }
-.status.up { color: var(--accent); }
+.status.work { color: var(--down); }
+.status.rest { color: var(--accent); }
 
 .stop-btn {
   min-height: 48px; padding: 0 20px;
@@ -193,9 +193,9 @@ h2 { font-size: 20px; margin: 0 0 10px; }
   background: var(--accent);
   transition: height 60ms linear;
 }
-.meter-fill.down { background: var(--down); }
+.meter-fill.work { background: var(--down); }
 .meter-mark { position: absolute; left: 0; right: 0; height: 3px; background: #fff; }
-.meter-mark.down { background: var(--down); }
+.meter-mark.work { background: var(--down); }
 
 .debug {
   position: absolute;
@@ -262,4 +262,9 @@ label.radio, label.check { display: flex; align-items: center; gap: 12px; }
 input[type="radio"], input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); }
 input[type="range"] { width: 100%; margin-top: 8px; accent-color: var(--accent); }
 output { font-weight: 700; color: var(--accent); }
+details { border: 1px solid var(--line); border-radius: 16px; padding: 4px 14px; }
+details[open] { padding-bottom: 14px; }
+details > fieldset { margin-top: 10px; }
+summary { font-size: 19px; font-weight: 700; padding: 12px 0; cursor: pointer; }
+.hint { color: var(--muted); margin: 0; font-size: 15px; line-height: 1.4; }
 .dialog-actions { display: flex; gap: 12px; justify-content: flex-end; }

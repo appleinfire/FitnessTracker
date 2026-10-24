@@ -28,7 +28,7 @@ export class Smoother {
   }
 }
 
-// Повторение = «вверху» → «внизу» → снова «вверху».
+// Повторение = «отдых» → «работа» → снова «отдых» (например, стоя → внизу → стоя).
 // Между порогами — мёртвая зона: там фаза не меняется, поэтому дрожание сигнала
 // не даёт ложных повторений. Новая фаза засчитывается, только если сигнал
 // продержался за порогом holdMs миллисекунд.
@@ -44,14 +44,17 @@ export class RepCounter {
     this.pendingSince = 0;
   }
 
-  // Возвращает true, если только что завершилось повторение.
-  update(value, t, downBelow, upAbove) {
-    let target = null;
-    if (value <= downBelow) target = 'down';
-    else if (value >= upAbove) target = 'up';
+  // rule: { dir: 'below' | 'above', work, rest } — при dir 'below' «работа»,
+  //   когда значение ниже порога work, «отдых» — когда выше rest; при 'above' наоборот.
+  // countOn: 'return' — засчитать при возврате в «отдых», 'peak' — при достижении «работы».
+  // Возвращает true, если только что засчитано повторение.
+  update(value, t, { dir, work, rest }, countOn = 'return') {
+    const isWork = dir === 'below' ? value <= work : value >= work;
+    const isRest = dir === 'below' ? value >= rest : value <= rest;
+    let target = isWork ? 'work' : isRest ? 'rest' : null;
 
-    // Пока не увидели исходное положение «вверху», ничего не считаем.
-    if (this.phase === 'unknown' && target === 'down') target = null;
+    // Пока не увидели исходное положение, ничего не считаем.
+    if (this.phase === 'unknown' && target === 'work') target = null;
 
     if (!target || target === this.phase) {
       this.pending = null;
@@ -67,6 +70,8 @@ export class RepCounter {
     const prev = this.phase;
     this.phase = target;
     this.pending = null;
-    return prev === 'down' && target === 'up';
+    return countOn === 'peak'
+      ? prev === 'rest' && target === 'work'
+      : prev === 'work' && target === 'rest';
   }
 }

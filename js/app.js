@@ -21,8 +21,8 @@ const ui = {
   counter: $('counter'),
   setTimer: $('set-timer'),
   meterFill: $('meter-fill'),
-  meterDown: $('meter-down'),
-  meterUp: $('meter-up'),
+  meterWork: $('meter-work'),
+  meterRest: $('meter-rest'),
   debug: $('debug'),
   toast: $('toast'),
   loading: $('loading'),
@@ -347,15 +347,14 @@ function loop() {
 
   lastSeenAt = t;
   const value = smoother.update(info.value, t);
-  if (value != null && counter.update(value, t, info.down, info.up)) onRep(t);
+  if (value != null && counter.update(value, t, info.rule, analyzer.countOn)) onRep(t);
 
   const phase = counter.phase;
-  const color = phase === 'down' ? '#ff7a45' : '#c8ff3d';
+  const color = phase === 'work' ? '#ff7a45' : '#c8ff3d';
   drawPose(canvas.getContext('2d'), lm, { highlight: info.joints, highlightColor: color });
 
-  if (phase === 'unknown') setStatus('Встаньте прямо, чтобы начать', 'warn');
-  else if (phase === 'up') setStatus('Вниз ↓', 'up');
-  else setStatus('Вверх ↑', 'down');
+  if (phase === 'unknown') setStatus(analyzer.startHint, 'warn');
+  else setStatus(analyzer.prompts[phase], phase);
 
   updateMeter(value, info);
 
@@ -383,11 +382,12 @@ function updateMeter(value, info) {
     return;
   }
   const [lo, hi] = info.range;
+  const { dir, work, rest } = info.rule;
   const pos = (v) => Math.max(0, Math.min(1, (v - lo) / (hi - lo))) * 100;
   ui.meterFill.style.height = `${pos(value)}%`;
-  ui.meterFill.classList.toggle('down', value <= info.down);
-  ui.meterDown.style.bottom = `${pos(info.down)}%`;
-  ui.meterUp.style.bottom = `${pos(info.up)}%`;
+  ui.meterFill.classList.toggle('work', dir === 'below' ? value <= work : value >= work);
+  ui.meterWork.style.bottom = `${pos(work)}%`;
+  ui.meterRest.style.bottom = `${pos(rest)}%`;
 }
 
 function countFps(t) {
@@ -405,8 +405,10 @@ function updateDebug(info, value) {
   const f = (v, unit) => (v == null ? '—' : `${Math.round(v)}${unit}`);
   const parts = [];
   if (info?.ok) {
-    parts.push(`колено ${f(info.knee, '°')}`, `бёдра ${f(info.hips, '%')}`);
-    parts.push(`сглаж. ${f(value, info.unit)} (низ < ${info.down}, верх > ${info.up})`);
+    const { dir, work, rest } = info.rule;
+    const [wSign, rSign] = dir === 'below' ? ['<', '>'] : ['>', '<'];
+    for (const [label, v, unit] of info.metrics) parts.push(`${label} ${f(v, unit)}`);
+    parts.push(`сглаж. ${f(value, info.unit)} (работа ${wSign} ${work}, отдых ${rSign} ${rest})`);
   }
   parts.push(`${fps.value} к/с`, pose?.delegate === 'GPU' ? 'GPU' : 'CPU');
   if (wakeMode !== 'wakelock') parts.push(wakeMode === 'video' ? 'экран: запасной режим' : 'экран может погаснуть');

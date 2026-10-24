@@ -29,13 +29,13 @@
         <span class="ex-name">Приседания</span>
         <span class="ex-note">по углу в колене или высоте бёдер</span>
       </button>
-      <button class="exercise" data-exercise="pushup" role="radio" aria-checked="false" disabled>
+      <button class="exercise" data-exercise="pushup" role="radio" aria-checked="false">
         <span class="ex-name">Отжимания</span>
-        <span class="ex-note">скоро</span>
+        <span class="ex-note">по углу в локте или высоте плеч</span>
       </button>
-      <button class="exercise" data-exercise="pullup" role="radio" aria-checked="false" disabled>
+      <button class="exercise" data-exercise="pullup" role="radio" aria-checked="false">
         <span class="ex-name">Подтягивания</span>
-        <span class="ex-note">скоро</span>
+        <span class="ex-note">голова относительно перекладины или угол в локте</span>
       </button>
     </div>
 
@@ -71,8 +71,8 @@
 
     <div class="meter" aria-hidden="true">
       <div id="meter-fill" class="meter-fill"></div>
-      <div id="meter-down" class="meter-mark down"></div>
-      <div id="meter-up" class="meter-mark up"></div>
+      <div id="meter-work" class="meter-mark work"></div>
+      <div id="meter-rest" class="meter-mark rest"></div>
     </div>
 
     <div id="debug" class="debug"></div>
@@ -89,27 +89,76 @@
     <form method="dialog" id="settings-form">
       <h2>Настройки</h2>
 
-      <fieldset>
-        <legend>Приседания: как считать</legend>
-        <label class="radio"><input type="radio" name="squatMethod" value="knee"> По углу в колене</label>
-        <label class="radio"><input type="radio" name="squatMethod" value="hips"> По высоте бёдер</label>
-      </fieldset>
+      <p class="hint">Цифры внизу экрана тренировки показывают текущий угол или высоту — по ним удобно подобрать пороги.</p>
 
-      <fieldset>
-        <legend>Пороги для угла в колене</legend>
-        <label class="range">Внизу, если меньше <output data-for="squatKneeDown"></output>°
-          <input type="range" name="squatKneeDown" min="60" max="140" step="5"></label>
-        <label class="range">Вверху, если больше <output data-for="squatKneeUp"></output>°
-          <input type="range" name="squatKneeUp" min="130" max="178" step="1"></label>
-      </fieldset>
+      <details>
+        <summary>Приседания</summary>
+        <fieldset>
+          <legend>Как считать</legend>
+          <label class="radio"><input type="radio" name="squatMethod" value="knee"> По углу в колене</label>
+          <label class="radio"><input type="radio" name="squatMethod" value="hips"> По высоте бёдер</label>
+        </fieldset>
+        <fieldset>
+          <legend>Угол в колене</legend>
+          <label class="range">Внизу, если меньше <output data-for="squatKneeDown"></output>°
+            <input type="range" name="squatKneeDown" min="60" max="140" step="5"></label>
+          <label class="range">Вверху, если больше <output data-for="squatKneeUp"></output>°
+            <input type="range" name="squatKneeUp" min="130" max="178" step="1"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Высота бёдер (100% — стоя)</legend>
+          <label class="range">Внизу, если ниже <output data-for="squatHipDown"></output>%
+            <input type="range" name="squatHipDown" min="30" max="90" step="1"></label>
+          <label class="range">Вверху, если выше <output data-for="squatHipUp"></output>%
+            <input type="range" name="squatHipUp" min="80" max="99" step="1"></label>
+        </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Пороги для высоты бёдер (100% — стоя)</legend>
-        <label class="range">Внизу, если ниже <output data-for="squatHipDown"></output>%
-          <input type="range" name="squatHipDown" min="50" max="90" step="1"></label>
-        <label class="range">Вверху, если выше <output data-for="squatHipUp"></output>%
-          <input type="range" name="squatHipUp" min="80" max="99" step="1"></label>
-      </fieldset>
+      <details>
+        <summary>Отжимания</summary>
+        <fieldset>
+          <legend>Как считать</legend>
+          <label class="radio"><input type="radio" name="pushupMethod" value="elbow"> По углу в локте</label>
+          <label class="radio"><input type="radio" name="pushupMethod" value="shoulders"> По высоте плеч</label>
+        </fieldset>
+        <fieldset>
+          <legend>Угол в локте</legend>
+          <label class="range">Внизу, если меньше <output data-for="pushupElbowDown"></output>°
+            <input type="range" name="pushupElbowDown" min="50" max="130" step="5"></label>
+          <label class="range">Вверху, если больше <output data-for="pushupElbowUp"></output>°
+            <input type="range" name="pushupElbowUp" min="130" max="178" step="1"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Высота плеч над руками (100% — на прямых руках)</legend>
+          <label class="range">Внизу, если ниже <output data-for="pushupShoulderDown"></output>%
+            <input type="range" name="pushupShoulderDown" min="20" max="85" step="1"></label>
+          <label class="range">Вверху, если выше <output data-for="pushupShoulderUp"></output>%
+            <input type="range" name="pushupShoulderUp" min="70" max="99" step="1"></label>
+        </fieldset>
+      </details>
+
+      <details>
+        <summary>Подтягивания</summary>
+        <fieldset>
+          <legend>Как считать</legend>
+          <label class="radio"><input type="radio" name="pullupMethod" value="head"> Голова относительно перекладины</label>
+          <label class="radio"><input type="radio" name="pullupMethod" value="elbow"> По углу в локте</label>
+        </fieldset>
+        <fieldset>
+          <legend>Голова (0% — вис, 100% — на уровне перекладины)</legend>
+          <label class="range">Наверху, если выше <output data-for="pullupHeadTop"></output>%
+            <input type="range" name="pullupHeadTop" min="60" max="130" step="1"></label>
+          <label class="range">Внизу, если ниже <output data-for="pullupHeadBottom"></output>%
+            <input type="range" name="pullupHeadBottom" min="10" max="70" step="1"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Угол в локте</legend>
+          <label class="range">Наверху, если меньше <output data-for="pullupElbowTop"></output>°
+            <input type="range" name="pullupElbowTop" min="40" max="120" step="5"></label>
+          <label class="range">Внизу, если больше <output data-for="pullupElbowBottom"></output>°
+            <input type="range" name="pullupElbowBottom" min="120" max="178" step="1"></label>
+        </fieldset>
+      </details>
 
       <fieldset>
         <legend>Подход</legend>
