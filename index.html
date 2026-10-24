@@ -112,16 +112,11 @@
     <section class="card cloud">
       <h2>Облако</h2>
       <div id="cloud-out">
-        <p class="hint">Войдите по почте — подходы будут сами сохраняться в облако и появятся на любом устройстве, где вы войдёте.</p>
-        <form id="cloud-email-form" class="cloud-form">
-          <input id="cloud-email" type="email" autocomplete="email" inputmode="email" placeholder="Ваша почта" required>
-          <button class="primary">Получить код</button>
-        </form>
-        <form id="cloud-code-form" class="cloud-form hidden">
-          <p id="cloud-code-hint" class="hint"></p>
-          <input id="cloud-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Код из письма">
-          <button class="primary">Войти</button>
-          <button type="button" id="cloud-back" class="secondary">Другая почта</button>
+        <p class="hint">Войдите — подходы будут сами сохраняться в облако и появятся на любом устройстве, где вы войдёте с той же почтой и паролем. Первый вход создаёт аккаунт, пароль — от 6 символов.</p>
+        <form id="cloud-form" class="cloud-form">
+          <input id="cloud-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="Почта" required>
+          <input id="cloud-password" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="Пароль" required>
+          <button id="cloud-login" class="primary">Войти</button>
         </form>
       </div>
       <div id="cloud-in" class="hidden">

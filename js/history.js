@@ -4,7 +4,7 @@
 import { addSet, updateSet, deleteSet, allSets, importSets } from './db.js';
 import { EXERCISE_NAMES } from './exercises.js';
 import {
-  initCloud, onCloudChange, cloudState, isSignedIn, requestCode, verifyCode, signOut, sync, syncSoon,
+  initCloud, onCloudChange, cloudState, isSignedIn, signIn, signOut, sync, syncSoon,
 } from './cloud.js';
 
 const $ = (id) => document.getElementById(id);
@@ -404,8 +404,6 @@ async function importFile(file) {
 
 // ---------- Облако ----------
 
-let pendingEmail = '';
-
 function agoText(iso) {
   const min = Math.floor((Date.now() - new Date(iso)) / 60000);
   if (min < 1) return 'только что';
@@ -420,8 +418,6 @@ function renderCloud() {
   const signedIn = isSignedIn();
   $('cloud-out').classList.toggle('hidden', signedIn);
   $('cloud-in').classList.toggle('hidden', !signedIn);
-  $('cloud-email-form').classList.toggle('hidden', Boolean(pendingEmail));
-  $('cloud-code-form').classList.toggle('hidden', !pendingEmail);
   if (!signedIn) return;
 
   $('cloud-email-label').textContent = st.email;
@@ -456,36 +452,16 @@ async function withBusy(button, fn) {
 }
 
 function initCloudCard() {
-  $('cloud-email-form').addEventListener('submit', (e) => {
+  $('cloud-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = $('cloud-email').value.trim();
-    if (!email) return;
-    withBusy(e.submitter || $('cloud-email-form').querySelector('button'), async () => {
-      await requestCode(email);
-      pendingEmail = email;
-      $('cloud-code-hint').textContent = `Отправили письмо с кодом на ${email}. Если его нет — проверьте «Спам».`;
-      $('cloud-code').value = '';
-      renderCloud();
-      $('cloud-code').focus();
-    });
-  });
-  $('cloud-code-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const code = $('cloud-code').value.replace(/\D/g, '');
-    if (code.length < 6) {
-      cloudError('Введите код из письма — 6 цифр или больше.');
-      return;
-    }
-    withBusy(e.submitter || $('cloud-code-form').querySelector('button'), async () => {
-      await verifyCode(pendingEmail, code);
-      pendingEmail = '';
+    const password = $('cloud-password').value;
+    if (!email || !password) return;
+    withBusy($('cloud-login'), async () => {
+      await signIn(email, password);
+      $('cloud-password').value = '';
       renderCloud();
     });
-  });
-  $('cloud-back').addEventListener('click', () => {
-    pendingEmail = '';
-    cloudError('');
-    renderCloud();
   });
   $('cloud-sync').addEventListener('click', () => sync());
   $('cloud-signout').addEventListener('click', () => {

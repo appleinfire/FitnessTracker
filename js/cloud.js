@@ -1,4 +1,4 @@
-// Облако (Supabase): вход по коду из письма и синхронизация истории.
+// Облако (Supabase): вход по почте и паролю и синхронизация истории.
 // Главное хранилище — телефон (db.js): тренировка работает без интернета,
 // а при появлении связи изменения уходят в облако и приходят с других устройств.
 
@@ -86,27 +86,33 @@ function forgetSession() {
 // Понятные сообщения для частых ошибок входа.
 function authMessage(err) {
   const code = err.code || '';
-  if (code === 'otp_expired' || /expired|invalid/i.test(err.message)) return 'Код не подошёл или устарел. Запросите новый.';
-  if (code === 'over_email_send_rate_limit' || err.status === 429) return 'Слишком много писем подряд. Подождите минуту и попробуйте снова.';
+  if (code === 'user_already_exists') return 'Неверный пароль для этой почты.';
+  if (code === 'weak_password' || /password/i.test(err.message) && err.status === 422) return 'Пароль слишком простой — нужно не меньше 6 символов.';
+  if (code === 'email_address_invalid' || code === 'validation_failed') return 'Проверьте адрес почты.';
+  if (code === 'signup_disabled') return 'Новые аккаунты в облаке выключены. Войдите с почтой, которая уже зарегистрирована.';
+  if (err.status === 429) return 'Слишком много попыток подряд. Подождите минуту.';
   if (!navigator.onLine || err instanceof TypeError) return 'Нет связи с облаком. Проверьте интернет.';
   return err.message;
 }
 
-export async function requestCode(email) {
+// Вход по почте и паролю. Если такой почты ещё нет — создаём аккаунт.
+export async function signIn(email, password) {
+  let data;
   try {
-    await api('/auth/v1/otp', { method: 'POST', auth: false, body: { email, create_user: true } });
+    data = await api('/auth/v1/token?grant_type=password', { method: 'POST', auth: false, body: { email, password } });
   } catch (err) {
-    throw new Error(authMessage(err));
+    if (err.code !== 'invalid_credentials' && err.status !== 400) throw new Error(authMessage(err));
+    // Почта не найдена или пароль не тот: пробуем создать аккаунт.
+    try {
+      data = await api('/auth/v1/signup', { method: 'POST', auth: false, body: { email, password } });
+    } catch (err2) {
+      throw new Error(authMessage(err2));
+    }
+    if (!data?.access_token) {
+      throw new Error('Аккаунт создан, но Supabase ждёт подтверждения почты. Выключите «Confirm email» в настройках Supabase и войдите снова.');
+    }
   }
-}
-
-export async function verifyCode(email, token) {
-  try {
-    const data = await api('/auth/v1/verify', { method: 'POST', auth: false, body: { type: 'email', email, token } });
-    saveSession(data);
-  } catch (err) {
-    throw new Error(authMessage(err));
-  }
+  saveSession(data);
   setState({ status: 'idle', message: '' });
   // Всё, что уже есть на телефоне, отправится в облако.
   sync();

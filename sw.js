@@ -1,6 +1,6 @@
 // Service worker: сохраняет приложение на телефоне, чтобы оно работало без интернета.
 // При изменении файлов приложения увеличивайте номер версии.
-const VERSION = 'v8'; // держать равным APP_VERSION в js/app.js
+const VERSION = 'v9'; // держать равным APP_VERSION в js/app.js
 const SHELL = `ft-shell-${VERSION}`;
 const ASSETS = 'ft-assets-v1'; // большие файлы (модель, wasm) — меняются редко
 
