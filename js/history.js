@@ -3,6 +3,7 @@
 
 import { addSet, updateSet, deleteSet, allSets, importSets } from './db.js';
 import { EXERCISE_NAMES } from './exercises.js';
+import { ACHIEVEMENTS, unlockedIds, unseen, markSeen } from './achievements.js';
 import {
   initCloud, onCloudChange, cloudState, isSignedIn, signIn, signOut, sync, syncSoon,
 } from './cloud.js';
@@ -102,7 +103,38 @@ export async function refresh() {
   renderToday();
   renderWeek();
   renderStreak();
+  renderAchievements();
   renderHistory();
+}
+
+// ---------- Достижения ----------
+
+function badge(a, { got, fresh }) {
+  const el = document.createElement('li');
+  el.className = 'badge' + (got ? ' got' : '') + (fresh ? ' fresh' : '');
+  el.innerHTML = '<span class="badge-icon" aria-hidden="true"></span><b></b><span class="badge-desc"></span>';
+  el.querySelector('.badge-icon').textContent = a.icon;
+  el.querySelector('b').textContent = a.name;
+  el.querySelector('.badge-desc').textContent = a.desc;
+  el.setAttribute('aria-label', `${a.name}: ${a.desc}. ${got ? 'Получено' : 'Ещё не получено'}`);
+  return el;
+}
+
+function renderAchievements() {
+  const got = unlockedIds(sets);
+  const fresh = unseen(got);
+  $('ach-count').textContent = `${got.size} из ${ACHIEVEMENTS.length}`;
+  // Полученные — первыми.
+  const ordered = [...ACHIEVEMENTS].sort((a, b) => Number(got.has(b.id)) - Number(got.has(a.id)));
+  $('ach-grid').replaceChildren(...ordered.map((a) => {
+    const el = badge(a, { got: got.has(a.id), fresh: fresh.has(a.id) });
+    // На главном экране — только значок и название; условие показываем по нажатию.
+    el.addEventListener('click', () => {
+      $('ach-tip').textContent = `${a.icon} ${a.name}: ${a.desc.toLowerCase()}${got.has(a.id) ? ' — получено' : ''}`;
+    });
+    return el;
+  }));
+  $('ach-tip').textContent = 'Нажмите на награду, чтобы увидеть условие.';
 }
 
 // Сохраняет законченный подход. Возвращает текст ошибки или ''.
@@ -247,6 +279,12 @@ export function showSummary(records, startedAt, endedAt) {
     li.append(exerciseIcon(ex), name, b);
     return li;
   }));
+  const got = unlockedIds(sets);
+  const fresh = ACHIEVEMENTS.filter((a) => unseen(got).has(a.id));
+  $('summary-ach').classList.toggle('hidden', fresh.length === 0);
+  $('summary-ach-grid').replaceChildren(...fresh.map((a) => badge(a, { got: true, fresh: true })));
+  markSeen(got);
+  renderAchievements();
   showScreen('summary');
 }
 

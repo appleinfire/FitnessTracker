@@ -243,6 +243,48 @@ h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
 .day-label { font-size: 12px; padding-top: 6px; text-align: center; }
 .day-col.today .day-label { color: var(--ink); font-weight: 700; }
 
+/* Достижения */
+.badges { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.badge {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 12px 6px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+  opacity: 0.38;
+  filter: grayscale(1);
+}
+.badge.got { opacity: 1; filter: none; border-color: rgba(215, 255, 57, 0.35); }
+.badge-icon {
+  width: 46px; height: 46px; margin-bottom: 4px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-size: 24px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.badge.got .badge-icon { box-shadow: 0 0 0 2px var(--lime), 0 0 18px -4px var(--lime-glow); }
+.badge b { font-size: 13.5px; line-height: 1.15; }
+.badge-desc { font-size: 11.5px; line-height: 1.25; color: var(--mist); }
+.badge.fresh::after {
+  content: 'Новое';
+  position: absolute; top: -7px; right: -4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--lime); color: #0A0F00;
+  font-size: 11px; font-weight: 700;
+}
+.badges.compact { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.badges.compact .badge { padding: 10px 4px 8px; cursor: pointer; }
+.badges.compact .badge-desc { display: none; }
+.badges.compact .badge b { font-size: 12px; }
+.badges.compact .badge-icon { width: 40px; height: 40px; font-size: 21px; }
+.ach-tip { margin-top: 10px; min-height: 1.4em; font-size: 14px; }
+.ach-new { border-color: rgba(215, 255, 57, 0.4); box-shadow: 0 0 40px -18px var(--lime-glow); }
+.ach-new .badge.got { animation: badge-in 600ms ease-out both; }
+@keyframes badge-in { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 /* Итоги по упражнениям: значок, название, число */
 .totals { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .total-chip {
