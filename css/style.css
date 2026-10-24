@@ -289,6 +289,22 @@ h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
 .day h3::first-letter { text-transform: uppercase; }
 #history-days { display: flex; flex-direction: column; gap: 18px; }
 .backup .hint { margin-bottom: 10px; }
+.cloud .hint { margin-bottom: 10px; }
+.cloud .hint.warn { color: var(--warn); }
+.cloud-form { display: flex; flex-direction: column; gap: 10px; }
+.cloud-form input {
+  min-height: 58px; width: 100%;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--ink);
+  font: inherit; font-size: 18px;
+}
+#cloud-code { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: 0.2em; text-align: center; }
+#cloud-code::placeholder { font-family: var(--text); font-weight: 400; font-size: 18px; letter-spacing: 0; }
+.cloud .error { margin-top: 10px; }
+button:disabled { opacity: 0.5; }
 .backup-actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* Итоги тренировки */

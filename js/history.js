@@ -3,6 +3,9 @@
 
 import { addSet, updateSet, deleteSet, allSets, importSets } from './db.js';
 import { EXERCISE_NAMES } from './exercises.js';
+import {
+  initCloud, onCloudChange, cloudState, isSignedIn, requestCode, verifyCode, signOut, sync, syncSoon,
+} from './cloud.js';
 
 const $ = (id) => document.getElementById(id);
 const BACKUP_KEY = 'ft.lastBackup';
@@ -113,6 +116,7 @@ export async function recordSet(record) {
       reason: record.reason,
     });
     await refresh();
+    syncSoon();
     return '';
   } catch (err) {
     console.error(err);
@@ -281,6 +285,10 @@ function renderBackupInfo() {
   let last = null;
   try { last = localStorage.getItem(BACKUP_KEY); } catch { /* нет доступа */ }
   const el = $('backup-info');
+  if (isSignedIn()) {
+    el.textContent = 'История и так хранится в облаке — файл нужен только про запас.';
+    return;
+  }
   if (!last) {
     el.textContent = sets.length ? 'Резервную копию ещё не делали.' : '';
     return;
@@ -311,6 +319,7 @@ async function saveEdit() {
   await updateSet({ ...editing, reps });
   $('set-dialog').close();
   await refresh();
+  syncSoon();
 }
 
 async function removeEdit() {
@@ -319,6 +328,7 @@ async function removeEdit() {
   await deleteSet(editing.id);
   $('set-dialog').close();
   await refresh();
+  syncSoon();
 }
 
 // ---------- Файлы ----------
@@ -356,7 +366,7 @@ async function exportJson() {
     app: 'fitness-tracker',
     format: 1,
     exportedAt: new Date().toISOString(),
-    sets: sets.map(({ id, ...rest }) => rest),
+    sets: sets.map(({ exercise, reps, startedAt, endedAt, reason }) => ({ exercise, reps, startedAt, endedAt, reason })),
   };
   const ok = await saveFile(`trenirovki-${stamp()}.json`, JSON.stringify(data, null, 2), 'application/json');
   if (ok) {
@@ -384,11 +394,107 @@ async function importFile(file) {
       && !Number.isNaN(Date.parse(r.startedAt)) && !Number.isNaN(Date.parse(r.endedAt)));
     const { added, skipped } = await importSets(valid);
     await refresh();
+    syncSoon();
     alert(`Восстановлено подходов: ${added}.` + (skipped ? `\nУже были в истории: ${skipped}.` : ''));
   } catch (err) {
     console.error(err);
     alert(`Не удалось прочитать файл: ${err?.message || err}`);
   }
+}
+
+// ---------- Облако ----------
+
+let pendingEmail = '';
+
+function agoText(iso) {
+  const min = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (min < 1) return 'только что';
+  if (min < 60) return `${min} мин назад`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} ${plural(h, 'час', 'часа', 'часов')} назад`;
+  return `${dayTitle(dayKey(iso)).toLowerCase()}, ${timeOf(iso)}`;
+}
+
+function renderCloud() {
+  const st = cloudState();
+  const signedIn = isSignedIn();
+  $('cloud-out').classList.toggle('hidden', signedIn);
+  $('cloud-in').classList.toggle('hidden', !signedIn);
+  $('cloud-email-form').classList.toggle('hidden', Boolean(pendingEmail));
+  $('cloud-code-form').classList.toggle('hidden', !pendingEmail);
+  if (!signedIn) return;
+
+  $('cloud-email-label').textContent = st.email;
+  const status = {
+    syncing: 'Синхронизирую…',
+    offline: 'Нет интернета — отправлю, когда появится связь.',
+    error: `Не получилось синхронизировать: ${st.message}`,
+    idle: st.lastSync ? `Всё сохранено в облаке. Последняя синхронизация: ${agoText(st.lastSync)}.` : 'Готовлю синхронизацию…',
+  }[st.status] || '';
+  const el = $('cloud-status');
+  el.textContent = status;
+  el.classList.toggle('warn', st.status === 'error');
+  $('cloud-sync').disabled = st.status === 'syncing';
+}
+
+function cloudError(text) {
+  const el = $('cloud-error');
+  el.textContent = text;
+  el.classList.toggle('hidden', !text);
+}
+
+async function withBusy(button, fn) {
+  button.disabled = true;
+  cloudError('');
+  try {
+    await fn();
+  } catch (err) {
+    cloudError(err.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function initCloudCard() {
+  $('cloud-email-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = $('cloud-email').value.trim();
+    if (!email) return;
+    withBusy(e.submitter || $('cloud-email-form').querySelector('button'), async () => {
+      await requestCode(email);
+      pendingEmail = email;
+      $('cloud-code-hint').textContent = `Отправили письмо с кодом на ${email}. Если его нет — проверьте «Спам».`;
+      $('cloud-code').value = '';
+      renderCloud();
+      $('cloud-code').focus();
+    });
+  });
+  $('cloud-code-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = $('cloud-code').value.replace(/\D/g, '');
+    if (code.length < 6) {
+      cloudError('Введите код из письма — 6 цифр или больше.');
+      return;
+    }
+    withBusy(e.submitter || $('cloud-code-form').querySelector('button'), async () => {
+      await verifyCode(pendingEmail, code);
+      pendingEmail = '';
+      renderCloud();
+    });
+  });
+  $('cloud-back').addEventListener('click', () => {
+    pendingEmail = '';
+    cloudError('');
+    renderCloud();
+  });
+  $('cloud-sync').addEventListener('click', () => sync());
+  $('cloud-signout').addEventListener('click', () => {
+    if (!confirm('Выйти из облака? История на этом телефоне останется, но перестанет синхронизироваться.')) return;
+    withBusy($('cloud-signout'), signOut);
+  });
+  onCloudChange(() => { renderCloud(); renderBackupInfo(); });
+  renderCloud();
+  initCloud({ onDataChanged: refresh });
 }
 
 // ---------- Подключение ----------
@@ -411,5 +517,6 @@ export function initHistory({ show }) {
   $('edit-save').addEventListener('click', saveEdit);
   $('edit-delete').addEventListener('click', removeEdit);
   $('edit-cancel').addEventListener('click', () => $('set-dialog').close());
+  initCloudCard();
   refresh();
 }

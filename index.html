@@ -97,7 +97,7 @@
       <ol id="today-list" class="set-list"></ol>
     </section>
 
-    <button id="open-history" class="secondary">История и резервная копия</button>
+    <button id="open-history" class="secondary">История и облако</button>
 
     <p id="version" class="version"></p>
   </main>
@@ -109,9 +109,35 @@
     </header>
     <h1 class="page-title">История</h1>
 
+    <section class="card cloud">
+      <h2>Облако</h2>
+      <div id="cloud-out">
+        <p class="hint">Войдите по почте — подходы будут сами сохраняться в облако и появятся на любом устройстве, где вы войдёте.</p>
+        <form id="cloud-email-form" class="cloud-form">
+          <input id="cloud-email" type="email" autocomplete="email" inputmode="email" placeholder="Ваша почта" required>
+          <button class="primary">Получить код</button>
+        </form>
+        <form id="cloud-code-form" class="cloud-form hidden">
+          <p id="cloud-code-hint" class="hint"></p>
+          <input id="cloud-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Код из письма">
+          <button class="primary">Войти</button>
+          <button type="button" id="cloud-back" class="secondary">Другая почта</button>
+        </form>
+      </div>
+      <div id="cloud-in" class="hidden">
+        <p id="cloud-email-label" class="hint strong"></p>
+        <p id="cloud-status" class="hint"></p>
+        <div class="backup-actions">
+          <button id="cloud-sync" class="secondary">Синхронизировать сейчас</button>
+          <button id="cloud-signout" class="secondary">Выйти</button>
+        </div>
+      </div>
+      <p id="cloud-error" class="error hidden"></p>
+    </section>
+
     <section class="card backup">
-      <h2>Резервная копия</h2>
-      <p class="hint">История хранится только на этом телефоне. Сохраняйте копию в «Файлы» или себе в мессенджер — если данные Safari сотрутся, её можно будет восстановить.</p>
+      <h2>Резервная копия в файл</h2>
+      <p class="hint">Сохраните копию в «Файлы» или себе в мессенджер — из неё можно восстановить историю.</p>
       <p id="backup-info" class="hint strong"></p>
       <div class="backup-actions">
         <button id="export-json" class="primary">Сохранить копию</button>
