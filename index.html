@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Трекер тренировок</title>
+  <meta name="theme-color" content="#0e1013">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Тренировки">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Главный экран -->
+  <main id="home" class="screen">
+    <header class="home-head">
+      <h1>Тренировка</h1>
+      <button id="open-settings" class="icon-btn" aria-label="Настройки">⚙︎</button>
+    </header>
+
+    <p class="lead">Выберите упражнение, поставьте телефон на пол или подставку в 2–3 метрах и встаньте так, чтобы было видно всё тело.</p>
+
+    <div class="exercise-list" role="radiogroup" aria-label="Упражнение">
+      <button class="exercise selected" data-exercise="squat" role="radio" aria-checked="true">
+        <span class="ex-name">Приседания</span>
+        <span class="ex-note">по углу в колене или высоте бёдер</span>
+      </button>
+      <button class="exercise" data-exercise="pushup" role="radio" aria-checked="false" disabled>
+        <span class="ex-name">Отжимания</span>
+        <span class="ex-note">скоро</span>
+      </button>
+      <button class="exercise" data-exercise="pullup" role="radio" aria-checked="false" disabled>
+        <span class="ex-name">Подтягивания</span>
+        <span class="ex-note">скоро</span>
+      </button>
+    </div>
+
+    <button id="start" class="primary">Начать</button>
+
+    <section id="session" class="session hidden">
+      <h2>Подходы за эту тренировку</h2>
+      <ol id="session-list"></ol>
+    </section>
+
+    <p id="home-error" class="error hidden"></p>
+  </main>
+
+  <!-- Экран тренировки -->
+  <section id="workout" class="screen hidden">
+    <div class="stage">
+      <div class="mirror">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="overlay"></canvas>
+      </div>
+    </div>
+
+    <div class="hud-top">
+      <div>
+        <div id="ex-title" class="ex-title">Приседания</div>
+        <div id="status" class="status">Загрузка…</div>
+      </div>
+      <button id="stop" class="stop-btn">Стоп</button>
+    </div>
+
+    <div id="counter" class="counter">0</div>
+    <div id="set-timer" class="set-timer"></div>
+
+    <div class="meter" aria-hidden="true">
+      <div id="meter-fill" class="meter-fill"></div>
+      <div id="meter-down" class="meter-mark down"></div>
+      <div id="meter-up" class="meter-mark up"></div>
+    </div>
+
+    <div id="debug" class="debug"></div>
+    <div id="toast" class="toast hidden"></div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <div id="loading-text">Включаю камеру…</div>
+    </div>
+  </section>
+
+  <!-- Настройки -->
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2>Настройки</h2>
+
+      <fieldset>
+        <legend>Приседания: как считать</legend>
+        <label class="radio"><input type="radio" name="squatMethod" value="knee"> По углу в колене</label>
+        <label class="radio"><input type="radio" name="squatMethod" value="hips"> По высоте бёдер</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Пороги для угла в колене</legend>
+        <label class="range">Внизу, если меньше <output data-for="squatKneeDown"></output>°
+          <input type="range" name="squatKneeDown" min="60" max="140" step="5"></label>
+        <label class="range">Вверху, если больше <output data-for="squatKneeUp"></output>°
+          <input type="range" name="squatKneeUp" min="130" max="178" step="1"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Пороги для высоты бёдер (100% — стоя)</legend>
+        <label class="range">Внизу, если ниже <output data-for="squatHipDown"></output>%
+          <input type="range" name="squatHipDown" min="50" max="90" step="1"></label>
+        <label class="range">Вверху, если выше <output data-for="squatHipUp"></output>%
+          <input type="range" name="squatHipUp" min="80" max="99" step="1"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Подход</legend>
+        <label class="range">Закончить, если нет повторений <output data-for="setEndSec"></output> с
+          <input type="range" name="setEndSec" min="5" max="10" step="1"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Звук и экран</legend>
+        <label class="check"><input type="checkbox" name="beep"> Сигнал на каждое повторение</label>
+        <label class="check"><input type="checkbox" name="voice"> Произносить счёт голосом</label>
+        <label class="check"><input type="checkbox" name="debug"> Показывать цифры для проверки</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Модель распознавания</legend>
+        <label class="radio"><input type="radio" name="model" value="full"> Точная (рекомендуется)</label>
+        <label class="radio"><input type="radio" name="model" value="lite"> Быстрая (для старых iPhone)</label>
+      </fieldset>
+
+      <div class="dialog-actions">
+        <button type="button" id="reset-settings" class="secondary">Сбросить</button>
+        <button value="close" class="primary">Готово</button>
+      </div>
+    </form>
+  </dialog>
+
+  <video id="keepawake" src="assets/keepawake.mp4" playsinline muted loop class="keepawake"></video>
+
+  <script src="vendor/mediapipe/vision_bundle.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
