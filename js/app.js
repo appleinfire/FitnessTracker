@@ -3,6 +3,7 @@ import { RepCounter, Smoother } from './counter.js';
 import { EXERCISES } from './exercises.js';
 import { getLandmarker, drawPose } from './pose.js';
 import { KeepAwake, Sound } from './device.js';
+import { initHistory, recordSet, plural } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,8 +13,7 @@ const ui = {
   start: $('start'),
   stop: $('stop'),
   homeError: $('home-error'),
-  session: $('session'),
-  sessionList: $('session-list'),
+  history: $('history'),
   video: $('video'),
   canvas: $('overlay'),
   exTitle: $('ex-title'),
@@ -32,7 +32,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 5;
+const APP_VERSION = 6;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -41,7 +41,6 @@ let settings = loadSettings();
 let exerciseKey = 'squat';
 const sound = new Sound();
 const keepAwake = new KeepAwake($('keepawake'));
-const sessionSets = [];
 
 // Состояние текущей тренировки.
 let running = false;
@@ -81,27 +80,12 @@ function showHomeError(text) {
   ui.homeError.classList.toggle('hidden', !text);
 }
 
-function renderSession() {
-  ui.session.classList.toggle('hidden', sessionSets.length === 0);
-  ui.sessionList.innerHTML = '';
-  for (const s of sessionSets) {
-    const li = document.createElement('li');
-    const time = s.endedAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    li.innerHTML = `<b></b> — <span class="reps"></span> <span class="time"></span>`;
-    li.querySelector('b').textContent = s.name;
-    li.querySelector('.reps').textContent = `${s.reps} ${plural(s.reps, 'раз', 'раза', 'раз')}`;
-    li.querySelector('.time').textContent = `· ${time}`;
-    ui.sessionList.append(li);
-  }
+function showScreen(name) {
+  for (const key of ['home', 'history', 'workout']) ui[key].classList.toggle('hidden', key !== name);
+  window.scrollTo(0, 0);
 }
 
-function plural(n, one, few, many) {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-  return many;
-}
+initHistory({ show: showScreen });
 
 // ---------- Настройки ----------
 
@@ -158,8 +142,7 @@ async function startWorkout() {
 
   analyzer = EXERCISES[exerciseKey]();
   ui.exTitle.textContent = analyzer.name;
-  ui.home.classList.add('hidden');
-  ui.workout.classList.remove('hidden');
+  showScreen('workout');
   setLoading('Включаю камеру…');
 
   try {
@@ -240,9 +223,7 @@ function backHome(errorText = '') {
   cancelAnimationFrame(rafId);
   stopCamera();
   keepAwake.disable();
-  ui.workout.classList.add('hidden');
-  ui.home.classList.remove('hidden');
-  renderSession();
+  showScreen('home');
   showHomeError(errorText);
 }
 
@@ -294,9 +275,11 @@ function finishSet(reason) {
     endedAt: new Date(),
     reason,
   };
-  sessionSets.push(record);
   const word = plural(record.reps, 'повторение', 'повторения', 'повторений');
   showToast(`Подход записан\n${record.name}: ${record.reps} ${word}`);
+  recordSet(record).then((error) => {
+    if (error) showToast(`Не удалось сохранить подход в историю\n${error}`);
+  });
   if (settings.voice) sound.say(`Подход окончен. ${record.reps}`);
   else if (settings.beep) { sound.beep(660, 160); sound.beep(990, 220, 0.18); }
   resetSet();

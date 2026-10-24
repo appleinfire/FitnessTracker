@@ -41,15 +41,41 @@
 
     <button id="start" class="primary">Начать</button>
 
-    <section id="session" class="session hidden">
-      <h2>Подходы за эту тренировку</h2>
-      <ol id="session-list"></ol>
+    <section id="today" class="card hidden">
+      <h2>Сегодня</h2>
+      <p id="today-totals" class="day-totals"></p>
+      <ol id="today-list" class="set-list"></ol>
     </section>
+
+    <button id="open-history" class="secondary">История и резервная копия</button>
 
     <p id="home-error" class="error hidden"></p>
 
     <p id="version" class="version"></p>
   </main>
+
+  <!-- История -->
+  <section id="history" class="screen hidden">
+    <header class="home-head">
+      <button id="history-back" class="back-btn">‹ Назад</button>
+    </header>
+    <h1>История</h1>
+
+    <section class="card backup">
+      <h2>Резервная копия</h2>
+      <p class="hint">История хранится только на этом телефоне. Сохраняйте копию в «Файлы» или себе в мессенджер — если данные Safari сотрутся, её можно будет восстановить.</p>
+      <p id="backup-info" class="hint strong"></p>
+      <div class="backup-actions">
+        <button id="export-json" class="primary">Сохранить копию</button>
+        <button id="export-csv" class="secondary">Таблица (CSV)</button>
+        <button id="import-btn" class="secondary">Восстановить из файла</button>
+      </div>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+    </section>
+
+    <p id="history-empty" class="hint">Пока нет ни одного подхода. Они появятся здесь после тренировки.</p>
+    <div id="history-days"></div>
+  </section>
 
   <!-- Экран тренировки -->
   <section id="workout" class="screen hidden">
@@ -186,6 +212,24 @@
         <button value="close" class="primary">Готово</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Правка подхода -->
+  <dialog id="set-dialog">
+    <div class="edit-box">
+      <h2 id="edit-title"></h2>
+      <p id="edit-when" class="hint"></p>
+      <div class="stepper">
+        <button id="edit-minus" class="secondary" aria-label="Меньше">−</button>
+        <input id="edit-reps" type="number" inputmode="numeric" min="0" aria-label="Повторения">
+        <button id="edit-plus" class="secondary" aria-label="Больше">+</button>
+      </div>
+      <div class="edit-actions">
+        <button id="edit-cancel" class="secondary">Отмена</button>
+        <button id="edit-save" class="primary">Сохранить</button>
+      </div>
+      <button id="edit-delete" class="danger">Удалить подход</button>
+    </div>
   </dialog>
 
   <video id="keepawake" src="assets/keepawake.mp4" playsinline muted loop class="keepawake"></video>

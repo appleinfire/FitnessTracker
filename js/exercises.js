@@ -17,6 +17,12 @@ export const LM = {
   lAnkle: 27, rAnkle: 28,
 };
 
+export const EXERCISE_NAMES = {
+  squat: 'Приседания',
+  pushup: 'Отжимания',
+  pullup: 'Подтягивания',
+};
+
 const LEGS = [[LM.lHip, LM.lKnee, LM.lAnkle], [LM.rHip, LM.rKnee, LM.rAnkle]];
 const ARMS = [[LM.lShoulder, LM.lElbow, LM.lWrist], [LM.rShoulder, LM.rElbow, LM.rWrist]];
 
@@ -83,7 +89,7 @@ class RefTracker {
 // ---------- Приседания ----------
 
 class Squat {
-  name = 'Приседания';
+  name = EXERCISE_NAMES.squat;
   startHint = 'Встаньте прямо, чтобы начать';
   prompts = { rest: 'Вниз ↓', work: 'Вверх ↑' };
   countOn = 'return'; // повторение засчитывается, когда встали обратно
@@ -121,7 +127,7 @@ class Squat {
 // ---------- Отжимания ----------
 
 class Pushup {
-  name = 'Отжимания';
+  name = EXERCISE_NAMES.pushup;
   startHint = 'Примите упор лёжа на прямых руках';
   prompts = { rest: 'Вниз ↓', work: 'Вверх ↑' };
   countOn = 'return'; // засчитывается, когда руки снова выпрямились
@@ -176,7 +182,7 @@ function midpoint(pts, a, b) {
 // ---------- Подтягивания ----------
 
 class Pullup {
-  name = 'Подтягивания';
+  name = EXERCISE_NAMES.pullup;
   startHint = 'Повисните на турнике';
   prompts = { rest: 'Вверх ↑', work: 'Вниз ↓' };
   countOn = 'peak'; // засчитывается, когда голова дошла до перекладины
