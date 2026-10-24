@@ -38,11 +38,39 @@ function dayTitle(key) {
   return date.toLocaleDateString('ru-RU', opts);
 }
 
-// «Отжимания 30 · Приседания 45» — сумма повторений по упражнениям.
-function totalsText(list) {
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Значок упражнения из набора в index.html.
+export function exerciseIcon(key) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', `ic-${key}`);
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(SVG_NS, 'use');
+  use.setAttribute('href', `#ic-${key}`);
+  svg.append(use);
+  return svg;
+}
+
+// Сумма повторений по упражнениям: [[упражнение, повторения, подходы], ...].
+function totalsOf(list) {
   const totals = new Map();
-  for (const s of list) totals.set(s.exercise, (totals.get(s.exercise) || 0) + s.reps);
-  return [...totals].map(([ex, reps]) => `${nameOf(ex)} ${reps}`).join(' · ');
+  for (const s of list) {
+    const t = totals.get(s.exercise) || [0, 0];
+    totals.set(s.exercise, [t[0] + s.reps, t[1] + 1]);
+  }
+  return [...totals].map(([ex, [reps, count]]) => [ex, reps, count]);
+}
+
+// Плашки «значок, название, число» — по одной на упражнение.
+function renderTotals(el, list) {
+  el.replaceChildren(...totalsOf(list).map(([ex, reps]) => {
+    const chip = document.createElement('span');
+    chip.className = 'total-chip';
+    const b = document.createElement('b');
+    b.textContent = reps;
+    chip.append(exerciseIcon(ex), nameOf(ex), b);
+    return chip;
+  }));
 }
 
 function setRow(s) {
@@ -52,6 +80,7 @@ function setRow(s) {
   btn.innerHTML = '<span class="set-time"></span><span class="set-name"></span><span class="set-reps"></span>';
   btn.querySelector('.set-time').textContent = timeOf(s.startedAt);
   btn.querySelector('.set-name').textContent = nameOf(s.exercise);
+  btn.setAttribute('aria-label', `${nameOf(s.exercise)}, ${timeOf(s.startedAt)}, ${s.reps}. Изменить`);
   btn.querySelector('.set-reps').textContent = s.reps;
   btn.addEventListener('click', () => openEdit(s));
   li.append(btn);
@@ -68,6 +97,8 @@ export async function refresh() {
     sets = [];
   }
   renderToday();
+  renderWeek();
+  renderStreak();
   renderHistory();
 }
 
@@ -95,9 +126,124 @@ function renderToday() {
   const today = dayKey(new Date().toISOString());
   const list = sets.filter((s) => dayKey(s.startedAt) === today);
   $('today').classList.toggle('hidden', list.length === 0);
-  $('today-totals').textContent = totalsText(list);
+  renderTotals($('today-totals'), list);
   const ol = $('today-list');
   ol.replaceChildren(...list.map(setRow));
+}
+
+// ---------- Главный экран: неделя и серия ----------
+
+const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+function startOfWeek(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // понедельник
+  return d;
+}
+
+function renderWeek() {
+  const monday = startOfWeek(new Date());
+  const keys = DAY_NAMES.map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + i);
+    return dayKey(d.toISOString());
+  });
+  const perDay = new Map(keys.map((k) => [k, 0]));
+  const prevMonday = new Date(monday);
+  prevMonday.setDate(prevMonday.getDate() - 7);
+  let lastWeek = 0;
+  for (const s of sets) {
+    const k = dayKey(s.startedAt);
+    if (perDay.has(k)) perDay.set(k, perDay.get(k) + s.reps);
+    else {
+      const t = new Date(s.startedAt);
+      if (t >= prevMonday && t < monday) lastWeek += s.reps;
+    }
+  }
+
+  const values = keys.map((k) => perDay.get(k));
+  const total = values.reduce((a, b) => a + b, 0);
+  $('week-total').textContent = total;
+  $('week-total-label').textContent = plural(total, 'повторение', 'повторения', 'повторений');
+
+  const delta = $('week-delta');
+  if (lastWeek > 0) {
+    const pct = Math.round(((total - lastWeek) / lastWeek) * 100);
+    delta.textContent = pct >= 0 ? `+${pct}% к прошлой неделе` : `${pct}% к прошлой неделе`;
+    delta.classList.toggle('up', pct > 0);
+  } else {
+    delta.textContent = total ? '' : 'Здесь появятся повторения по дням.';
+    delta.classList.remove('up');
+  }
+
+  const max = Math.max(...values, 1);
+  const todayKey = dayKey(new Date().toISOString());
+  $('week-chart').replaceChildren(...keys.map((k, i) => {
+    const col = document.createElement('button');
+    col.className = 'day-col' + (k === todayKey ? ' today' : '');
+    col.setAttribute('role', 'listitem');
+    col.setAttribute('aria-label', `${DAY_NAMES[i]}: ${values[i]}`);
+    const h = `${Math.round((values[i] / max) * 100)}%`;
+    col.innerHTML = '<span class="bar-area"><span class="bar-value"></span><span class="bar"></span></span><span class="day-label"></span>';
+    col.querySelector('.bar-area').style.setProperty('--h', h);
+    col.querySelector('.bar').style.height = h;
+    col.querySelector('.bar-value').textContent = values[i] || '';
+    col.querySelector('.day-label').textContent = DAY_NAMES[i];
+    col.addEventListener('click', () => col.classList.toggle('show'));
+    return col;
+  }));
+}
+
+// Сколько дней подряд (до сегодня или до вчера) были тренировки.
+export function streakDays() {
+  const days = new Set(sets.map((s) => dayKey(s.startedAt)));
+  const d = new Date();
+  if (!days.has(dayKey(d.toISOString()))) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (days.has(dayKey(d.toISOString()))) {
+    n += 1;
+    d.setDate(d.getDate() - 1);
+  }
+  return n;
+}
+
+function renderStreak() {
+  const n = streakDays();
+  $('streak').classList.toggle('hidden', n < 1);
+  $('streak-days').textContent = n;
+  $('streak-label').textContent = `${plural(n, 'день', 'дня', 'дней')} подряд`;
+}
+
+// ---------- Итоги тренировки ----------
+
+export function showSummary(records, startedAt, endedAt) {
+  const total = records.reduce((a, r) => a + r.reps, 0);
+  $('summary-total').textContent = total;
+  $('summary-total-label').textContent = plural(total, 'повторение', 'повторения', 'повторений');
+  $('summary-when').textContent = `${dayTitle(dayKey(startedAt.toISOString()))}, ${timeOf(startedAt.toISOString())}–${timeOf(endedAt.toISOString())}`;
+
+  const sec = Math.max(0, Math.round((endedAt - startedAt) / 1000));
+  $('summary-duration').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  $('summary-sets').textContent = records.length;
+  $('summary-sets-label').textContent = plural(records.length, 'Подход', 'Подхода', 'Подходов');
+  const streak = Math.max(1, streakDays());
+  $('summary-streak').textContent = streak;
+  $('summary-streak-label').textContent = `${plural(streak, 'День', 'Дня', 'Дней')} подряд`;
+
+  $('summary-list').replaceChildren(...totalsOf(records).map(([ex, reps, count]) => {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    name.textContent = nameOf(ex);
+    const sub = document.createElement('span');
+    sub.className = 'sub';
+    sub.textContent = `${count} ${plural(count, 'подход', 'подхода', 'подходов')}`;
+    name.append(sub);
+    const b = document.createElement('b');
+    b.textContent = reps;
+    li.append(exerciseIcon(ex), name, b);
+    return li;
+  }));
+  showScreen('summary');
 }
 
 // ---------- Экран истории ----------
@@ -118,9 +264,9 @@ function renderHistory() {
     section.className = 'day';
     const h = document.createElement('h3');
     h.textContent = dayTitle(key);
-    const totals = document.createElement('p');
-    totals.className = 'day-totals';
-    totals.textContent = totalsText(list);
+    const totals = document.createElement('div');
+    totals.className = 'totals';
+    renderTotals(totals, list);
     const ol = document.createElement('ol');
     ol.className = 'set-list';
     ol.append(...list.map(setRow));
@@ -251,6 +397,7 @@ export function initHistory({ show }) {
   showScreen = show;
   $('open-history').addEventListener('click', () => { showScreen('history'); refresh(); });
   $('history-back').addEventListener('click', () => showScreen('home'));
+  $('summary-done').addEventListener('click', () => showScreen('home'));
   $('export-json').addEventListener('click', exportJson);
   $('export-csv').addEventListener('click', exportCsv);
   $('import-btn').addEventListener('click', () => $('import-file').click());

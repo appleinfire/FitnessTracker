@@ -45,7 +45,7 @@ function bodyConnections() {
   return connections;
 }
 
-export function drawPose(ctx, lm, { highlight = [], highlightColor = '#c8ff3d' } = {}) {
+export function drawPose(ctx, lm, { highlight = [], highlightColor = '#D7FF39' } = {}) {
   const { width: w, height: h } = ctx.canvas;
   ctx.clearRect(0, 0, w, h);
   if (!lm) return;

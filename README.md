@@ -34,4 +34,5 @@
 - `js/pose.js` — загрузка модели и рисование скелета.
 - `js/device.js` — «не гасить экран» и звуки.
 - `sw.js`, `manifest.webmanifest` — офлайн-режим и иконка.
+- `css/fonts.css`, `fonts/` — шрифты Fira Sans Extra Condensed и Onest (лицензия SIL OFL), лежат в приложении для офлайна.
 - `vendor/mediapipe/` — библиотека MediaPipe Tasks Vision 1.0.1, `models/` — модели позы.

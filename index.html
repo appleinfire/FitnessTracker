@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <title>Трекер тренировок</title>
-  <meta name="theme-color" content="#0e1013">
+  <meta name="theme-color" content="#080B14">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,54 +12,102 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- Значки упражнений -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ic-pushup" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M33 22 L17 28 L5 33"/><path d="M30 23 L32 36"/><path d="M3 38 H45" opacity=".35"/>
+      </g>
+      <circle cx="38" cy="18" r="4.4" fill="currentColor"/>
+    </symbol>
+    <symbol id="ic-squat" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 15 L17 27 L31 29 L28 41"/><path d="M22 18 L36 20"/><path d="M28 41 H34"/>
+      </g>
+      <circle cx="24" cy="9" r="4.4" fill="currentColor"/>
+    </symbol>
+    <symbol id="ic-pullup" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 6 H43" opacity=".35"/><path d="M14 6 L18 19 L24 21 L30 19 L34 6"/><path d="M24 21 V33 L20 43"/><path d="M24 33 L28 43"/>
+      </g>
+      <circle cx="24" cy="14" r="4.4" fill="currentColor"/>
+    </symbol>
+  </svg>
+
   <!-- Главный экран -->
-  <main id="home" class="screen">
-    <header class="home-head">
-      <h1>Тренировка</h1>
-      <button id="open-settings" class="icon-btn" aria-label="Настройки">⚙︎</button>
+  <main id="home" class="screen page">
+    <header class="topbar">
+      <span class="brand">Тренировки</span>
+      <button id="open-settings" class="icon-btn" aria-label="Настройки">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+      </button>
     </header>
 
-    <p class="lead">Выберите упражнение, поставьте телефон на пол или подставку в 2–3 метрах и встаньте так, чтобы было видно всё тело.</p>
+    <section class="hero">
+      <h1>Каждый повтор на&nbsp;счету</h1>
+      <div id="streak" class="streak hidden">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2c1 3.5 5 5.6 5 10.5A5 5 0 0 1 12 18a5 5 0 0 1-5-5.5c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-6 1-9z"/></svg>
+        <b id="streak-days"></b>
+        <span id="streak-label"></span>
+      </div>
+    </section>
 
     <div class="exercise-list" role="radiogroup" aria-label="Упражнение">
-      <button class="exercise selected" data-exercise="squat" role="radio" aria-checked="true">
-        <span class="ex-name">Приседания</span>
-        <span class="ex-note">по углу в колене или высоте бёдер</span>
-      </button>
-      <button class="exercise" data-exercise="pushup" role="radio" aria-checked="false">
+      <button class="exercise ex-pushup" data-exercise="pushup" role="radio" aria-checked="false">
+        <svg class="ex-icon" aria-hidden="true"><use href="#ic-pushup"/></svg>
         <span class="ex-name">Отжимания</span>
-        <span class="ex-note">по углу в локте или высоте плеч</span>
+        <span class="ex-note">Грудь и руки</span>
       </button>
-      <button class="exercise" data-exercise="pullup" role="radio" aria-checked="false">
+      <button class="exercise ex-squat selected" data-exercise="squat" role="radio" aria-checked="true">
+        <svg class="ex-icon" aria-hidden="true"><use href="#ic-squat"/></svg>
+        <span class="ex-name">Приседания</span>
+        <span class="ex-note">Ноги</span>
+      </button>
+      <button class="exercise ex-pullup" data-exercise="pullup" role="radio" aria-checked="false">
+        <svg class="ex-icon" aria-hidden="true"><use href="#ic-pullup"/></svg>
         <span class="ex-name">Подтягивания</span>
-        <span class="ex-note">голова относительно перекладины или угол в локте</span>
+        <span class="ex-note">Спина и руки</span>
       </button>
     </div>
 
-    <button id="start" class="primary">Начать</button>
+    <button id="start" class="primary start-btn">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+      Начать
+    </button>
+    <p class="hint center">Поставьте телефон в 2–3 метрах так, чтобы в кадре было всё тело.</p>
+
+    <p id="home-error" class="error hidden"></p>
+
+    <section class="card week">
+      <div class="week-head">
+        <h2>Эта неделя</h2>
+        <div class="week-total"><b id="week-total">0</b> <span id="week-total-label">повторений</span></div>
+      </div>
+      <p id="week-delta" class="week-delta"></p>
+      <div id="week-chart" class="week-chart" role="list" aria-label="Повторения по дням недели"></div>
+    </section>
 
     <section id="today" class="card hidden">
       <h2>Сегодня</h2>
-      <p id="today-totals" class="day-totals"></p>
+      <div id="today-totals" class="totals"></div>
       <ol id="today-list" class="set-list"></ol>
     </section>
 
     <button id="open-history" class="secondary">История и резервная копия</button>
 
-    <p id="home-error" class="error hidden"></p>
-
     <p id="version" class="version"></p>
   </main>
 
   <!-- История -->
-  <section id="history" class="screen hidden">
-    <header class="home-head">
+  <section id="history" class="screen page hidden">
+    <header class="topbar">
       <button id="history-back" class="back-btn">‹ Назад</button>
     </header>
-    <h1>История</h1>
+    <h1 class="page-title">История</h1>
 
     <section class="card backup">
       <h2>Резервная копия</h2>
@@ -77,6 +125,30 @@
     <div id="history-days"></div>
   </section>
 
+  <!-- Итоги тренировки -->
+  <section id="summary" class="screen page hidden">
+    <h1 class="page-title summary-title">Тренировка завершена</h1>
+    <p id="summary-when" class="hint"></p>
+
+    <section class="card summary-hero">
+      <b id="summary-total" class="summary-total">0</b>
+      <span id="summary-total-label">повторений</span>
+    </section>
+
+    <div class="stats">
+      <div class="stat"><b id="summary-duration">0:00</b><span>Время</span></div>
+      <div class="stat"><b id="summary-sets">0</b><span id="summary-sets-label">Подходов</span></div>
+      <div class="stat"><b id="summary-streak">1</b><span id="summary-streak-label">День подряд</span></div>
+    </div>
+
+    <section class="card">
+      <h2>По упражнениям</h2>
+      <ul id="summary-list" class="breakdown"></ul>
+    </section>
+
+    <button id="summary-done" class="primary">Готово</button>
+  </section>
+
   <!-- Экран тренировки -->
   <section id="workout" class="screen hidden">
     <div class="stage">
@@ -85,25 +157,33 @@
         <canvas id="overlay"></canvas>
       </div>
     </div>
+    <div class="vignette" aria-hidden="true"></div>
 
     <div class="hud-top">
       <div>
         <div id="ex-title" class="ex-title">Приседания</div>
-        <div id="status" class="status">Загрузка…</div>
+        <div id="status" class="status"><i></i><span>Загрузка…</span></div>
       </div>
-      <button id="stop" class="stop-btn">Стоп</button>
+      <button id="stop" class="stop-btn">Закончить</button>
     </div>
 
-    <div id="counter" class="counter">0</div>
-    <div id="set-timer" class="set-timer"></div>
-
-    <div class="meter" aria-hidden="true">
-      <div id="meter-fill" class="meter-fill"></div>
-      <div id="meter-work" class="meter-mark work"></div>
-      <div id="meter-rest" class="meter-mark rest"></div>
+    <div id="ring" class="ring">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="ring-track" cx="100" cy="100" r="88"/>
+        <circle id="ring-arc" class="ring-arc" cx="100" cy="100" r="88"/>
+      </svg>
+      <div id="counter" class="counter">0</div>
     </div>
 
-    <div id="debug" class="debug"></div>
+    <div class="hud-bottom">
+      <div id="set-timer" class="set-timer"></div>
+      <div class="chips">
+        <div class="chip"><span>Подход</span><b id="set-no">1</b></div>
+        <div class="chip"><span>Время</span><b id="set-clock">0:00</b></div>
+      </div>
+      <div id="debug" class="debug"></div>
+    </div>
+
     <div id="toast" class="toast hidden"></div>
 
     <div id="loading" class="loading">

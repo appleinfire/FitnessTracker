@@ -3,7 +3,7 @@ import { RepCounter, Smoother } from './counter.js';
 import { EXERCISES } from './exercises.js';
 import { getLandmarker, drawPose } from './pose.js';
 import { KeepAwake, Sound } from './device.js';
-import { initHistory, recordSet, plural } from './history.js';
+import { initHistory, recordSet, showSummary } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,9 +20,11 @@ const ui = {
   status: $('status'),
   counter: $('counter'),
   setTimer: $('set-timer'),
-  meterFill: $('meter-fill'),
-  meterWork: $('meter-work'),
-  meterRest: $('meter-rest'),
+  ring: $('ring'),
+  ringArc: $('ring-arc'),
+  setNo: $('set-no'),
+  setClock: $('set-clock'),
+  summary: $('summary'),
   debug: $('debug'),
   toast: $('toast'),
   loading: $('loading'),
@@ -32,13 +34,15 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
 
 let settings = loadSettings();
+const EXERCISE_KEY = 'ft.exercise';
 let exerciseKey = 'squat';
+try { exerciseKey = localStorage.getItem(EXERCISE_KEY) || exerciseKey; } catch { /* нет доступа */ }
 const sound = new Sound();
 const keepAwake = new KeepAwake($('keepawake'));
 
@@ -55,22 +59,31 @@ const counter = new RepCounter(60);
 let depth = { cur: null, raw: null, last: null, lastRaw: null };
 let lastVideoTime = -1;
 let set = null;
+// Тренировка — от «Начать» до «Закончить»: её подходы попадают в итоги.
+let session = null;
 let lastSeenAt = 0;
 let fps = { frames: 0, since: 0, value: 0 };
 let wakeMode = '';
 
 // ---------- Главный экран ----------
 
+function selectExercise(key) {
+  exerciseKey = key;
+  document.querySelectorAll('.exercise').forEach((b) => {
+    const on = b.dataset.exercise === key;
+    b.classList.toggle('selected', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+}
+
 document.querySelectorAll('.exercise').forEach((btn) => {
   btn.addEventListener('click', () => {
-    if (btn.disabled) return;
-    exerciseKey = btn.dataset.exercise;
-    document.querySelectorAll('.exercise').forEach((b) => {
-      b.classList.toggle('selected', b === btn);
-      b.setAttribute('aria-checked', String(b === btn));
-    });
+    selectExercise(btn.dataset.exercise);
+    try { localStorage.setItem(EXERCISE_KEY, exerciseKey); } catch { /* нет доступа */ }
   });
 });
+if (!EXERCISES[exerciseKey]) exerciseKey = 'squat';
+selectExercise(exerciseKey);
 
 ui.start.addEventListener('click', startWorkout);
 ui.stop.addEventListener('click', () => stopWorkout());
@@ -81,7 +94,7 @@ function showHomeError(text) {
 }
 
 function showScreen(name) {
-  for (const key of ['home', 'history', 'workout']) ui[key].classList.toggle('hidden', key !== name);
+  for (const key of ['home', 'history', 'summary', 'workout']) ui[key].classList.toggle('hidden', key !== name);
   window.scrollTo(0, 0);
 }
 
@@ -163,6 +176,7 @@ async function startWorkout() {
   }
 
   wakeMode = await keepAwake.enable();
+  session = { startedAt: new Date(), records: [] };
   resetSet();
   counter.reset();
   smoother.reset();
@@ -213,9 +227,12 @@ function cameraErrorText(err) {
   return `Не удалось включить камеру: ${err?.message || name || err}`;
 }
 
-function stopWorkout(errorText = '') {
-  if (set && set.reps > 0) finishSet('stop');
+async function stopWorkout(errorText = '') {
+  const finishing = running && set && set.reps > 0 ? finishSet('stop') : null;
   backHome(errorText);
+  await finishing;
+  if (!errorText && session?.records.length) showSummary(session.records, session.startedAt, new Date());
+  session = null;
 }
 
 function backHome(errorText = '') {
@@ -253,15 +270,30 @@ function resetSet() {
   set = { reps: 0, lastRepAt: 0, startedAt: null };
   ui.counter.textContent = '0';
   ui.setTimer.textContent = '';
+  ui.setNo.textContent = String((session?.records.length || 0) + 1);
+  ui.setClock.textContent = '0:00';
 }
 
+// Время подхода — от первого повторения.
+function updateSetClock() {
+  if (!set.startedAt) return;
+  const sec = Math.floor((Date.now() - set.startedAt) / 1000);
+  const text = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  if (ui.setClock.textContent !== text) ui.setClock.textContent = text;
+}
+
+let repTimer = 0;
 function onRep(t) {
   if (set.reps === 0) set.startedAt = new Date();
   set.reps += 1;
   set.lastRepAt = t;
   ui.counter.textContent = String(set.reps);
-  ui.counter.classList.add('bump');
-  setTimeout(() => ui.counter.classList.remove('bump'), 160);
+  // Вспышка кольца: перезапускаем анимацию на каждом повторении.
+  ui.ring.classList.remove('rep');
+  void ui.ring.offsetWidth;
+  ui.ring.classList.add('rep');
+  clearTimeout(repTimer);
+  repTimer = setTimeout(() => ui.ring.classList.remove('rep'), 450);
   if (settings.voice) sound.say(String(set.reps));
   else if (settings.beep) sound.beep(880, 120);
 }
@@ -275,14 +307,14 @@ function finishSet(reason) {
     endedAt: new Date(),
     reason,
   };
-  const word = plural(record.reps, 'повторение', 'повторения', 'повторений');
-  showToast(`Подход записан\n${record.name}: ${record.reps} ${word}`);
-  recordSet(record).then((error) => {
-    if (error) showToast(`Не удалось сохранить подход в историю\n${error}`);
-  });
+  showToast(`Подход записан\n${record.name}: ${record.reps}`);
+  session?.records.push(record);
   if (settings.voice) sound.say(`Подход окончен. ${record.reps}`);
   else if (settings.beep) { sound.beep(660, 160); sound.beep(990, 220, 0.18); }
   resetSet();
+  return recordSet(record).then((error) => {
+    if (error) showToast(`Не удалось сохранить подход в историю\n${error}`);
+  });
 }
 
 let toastTimer = 0;
@@ -330,7 +362,7 @@ function loop() {
     // Короткие пропадания (на долю секунды) не сбрасывают фазу повторения.
     if (t - lastSeenAt > 1000) counter.reset();
     setStatus(info?.hint || 'Не вижу человека — встаньте в кадр целиком', 'warn');
-    updateMeter(null);
+    updateRing(null);
     if (set.reps > 0 && t - lastSeenAt > ABSENT_END_MS) finishSet('absent');
     updateDebug(info);
     return;
@@ -342,13 +374,14 @@ function loop() {
   trackDepth(info, value);
 
   const phase = counter.phase;
-  const color = phase === 'work' ? '#ff7a45' : '#c8ff3d';
+  const color = phase === 'work' ? '#B98CFF' : '#D7FF39';
   drawPose(canvas.getContext('2d'), lm, { highlight: info.joints, highlightColor: color });
 
   if (phase === 'unknown') setStatus(analyzer.startHint, 'warn');
   else setStatus(analyzer.prompts[phase], phase);
 
-  updateMeter(value, info);
+  updateRing(value, info);
+  updateSetClock();
 
   if (set.reps > 0) {
     const left = settings.setEndSec * 1000 - (t - set.lastRepAt);
@@ -364,22 +397,21 @@ function setStatus(text, kind) {
   const key = `${kind}|${text}`;
   if (key === lastStatus) return;
   lastStatus = key;
-  ui.status.textContent = text;
+  ui.status.querySelector('span').textContent = text;
   ui.status.className = `status ${kind}`;
 }
 
-function updateMeter(value, info) {
-  if (value == null) {
-    ui.meterFill.style.height = '0';
-    return;
+// Кольцо: пусто в исходном положении, полное — в рабочем (внизу / наверху).
+const RING_LENGTH = 553; // 2π · 88, как в index.html
+function updateRing(value, info) {
+  let progress = 0;
+  if (value != null) {
+    const { dir, work, rest } = info.rule;
+    progress = dir === 'below' ? (rest - value) / (rest - work) : (value - rest) / (work - rest);
+    progress = Math.max(0, Math.min(1, progress));
   }
-  const [lo, hi] = info.range;
-  const { dir, work, rest } = info.rule;
-  const pos = (v) => Math.max(0, Math.min(1, (v - lo) / (hi - lo))) * 100;
-  ui.meterFill.style.height = `${pos(value)}%`;
-  ui.meterFill.classList.toggle('work', dir === 'below' ? value <= work : value >= work);
-  ui.meterWork.style.bottom = `${pos(work)}%`;
-  ui.meterRest.style.bottom = `${pos(rest)}%`;
+  ui.ringArc.style.strokeDashoffset = String(RING_LENGTH * (1 - progress));
+  ui.ring.classList.toggle('working', counter.phase === 'work');
 }
 
 function countFps(t) {
