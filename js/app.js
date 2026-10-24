@@ -31,6 +31,10 @@ const ui = {
   settingsForm: $('settings-form'),
 };
 
+// Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
+const APP_VERSION = 5;
+$('version').textContent = `Версия ${APP_VERSION}`;
+
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
 
 let settings = loadSettings();
@@ -439,7 +443,21 @@ function updateDebug(info, value) {
 // ---------- Офлайн-режим ----------
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker не зарегистрирован', err));
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js');
+      // Приложение с экрана «Домой» часто не перезапускается, а просыпается —
+      // поэтому при каждом возвращении проверяем, нет ли новой версии.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && !running) reg.update().catch(() => {});
+      });
+    } catch (err) {
+      console.warn('Service worker не зарегистрирован', err);
+    }
+  });
+  // Новая версия установилась — перезагружаемся, если не идёт тренировка.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !running) location.reload();
   });
 }

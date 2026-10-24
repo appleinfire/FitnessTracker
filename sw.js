@@ -1,6 +1,6 @@
 // Service worker: сохраняет приложение на телефоне, чтобы оно работало без интернета.
 // При изменении файлов приложения увеличивайте номер версии.
-const VERSION = 'v4';
+const VERSION = 'v5'; // держать равным APP_VERSION в js/app.js
 const SHELL = `ft-shell-${VERSION}`;
 const ASSETS = 'ft-assets-v1'; // большие файлы (модель, wasm) — меняются редко
 
@@ -96,7 +96,9 @@ async function networkFirst(request, cacheName) {
 function fetchWithTimeout(request, ms) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('timeout')), ms);
-    fetch(request).then(
+    // no-cache: всегда сверяться с сервером, а не брать из кэша браузера
+    // (GitHub Pages разрешает браузеру хранить файлы до 10 минут).
+    fetch(request.url, { cache: 'no-cache' }).then(
       (r) => { clearTimeout(timer); resolve(r); },
       (e) => { clearTimeout(timer); reject(e); },
     );

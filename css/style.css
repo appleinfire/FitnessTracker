@@ -91,6 +91,8 @@ h2 { font-size: 20px; margin: 0 0 10px; }
 .session li { padding: 6px 0; font-size: 17px; }
 .session li .time { color: var(--muted); }
 
+.version { margin: auto 0 0; text-align: center; color: var(--muted); font-size: 13px; }
+
 .error {
   color: #ffd5d5;
   background: #3a1717;
