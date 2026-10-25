@@ -1,7 +1,9 @@
 // Достижения: считаются из истории подходов, поэтому ничего отдельно не хранят
 // и сами появляются на всех устройствах через облако.
 
-const SEEN_KEY = 'ft.achievements.seen';
+import { profileKey } from './profile.js';
+
+const BASE_SEEN_KEY = 'ft.achievements.seen';
 
 const localDay = (iso) => {
   const d = new Date(iso);
@@ -85,7 +87,7 @@ export function unlockedIds(sets) {
 
 function readSeen() {
   try {
-    const raw = localStorage.getItem(SEEN_KEY);
+    const raw = localStorage.getItem(profileKey(BASE_SEEN_KEY));
     return raw ? new Set(JSON.parse(raw)) : null;
   } catch {
     return null;
@@ -93,7 +95,7 @@ function readSeen() {
 }
 
 function writeSeen(ids) {
-  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...ids])); } catch { /* нет доступа */ }
+  try { localStorage.setItem(profileKey(BASE_SEEN_KEY), JSON.stringify([...ids])); } catch { /* нет доступа */ }
 }
 
 // Достижения, полученные, но ещё не показанные в итогах тренировки.

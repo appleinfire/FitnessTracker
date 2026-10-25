@@ -39,6 +39,12 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Профиль Kids: акцент голубой, чтобы сразу было видно, чья тренировка */
+body.kids {
+  --lime: #39E1FF;
+  --lime-glow: rgba(57, 225, 255, 0.4);
+}
+
 /* Свечение на фоне — как подсветка в тёмном зале */
 body::before {
   content: '';
@@ -130,6 +136,21 @@ h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
   font-size: 24px;
   letter-spacing: 0.01em;
 }
+
+.topbar { gap: 10px; }
+.profile-switch {
+  margin-left: auto;
+  display: flex; padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+}
+.profile-switch button {
+  min-width: 52px; min-height: 38px; padding: 0 14px;
+  border: 0; border-radius: 999px; background: none;
+  color: var(--mist); font-size: 15px; font-weight: 600;
+}
+.profile-switch button[aria-checked="true"] { background: var(--lime); color: #071016; box-shadow: 0 4px 18px -6px var(--lime-glow); }
 
 .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
 .hero h1, .page-title {

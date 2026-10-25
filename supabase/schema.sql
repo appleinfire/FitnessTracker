@@ -48,3 +48,6 @@ create policy "Свои подходы: изменение" on public.sets
   for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 grant select, insert, update on public.sets to authenticated;
+
+-- Профили «Я» / «Kids» (добавлено позже; безопасно выполнять повторно).
+alter table public.sets add column if not exists profile text not null default 'me';

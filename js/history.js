@@ -5,6 +5,7 @@ import { addSet, updateSet, deleteSet, allSets, importSets } from './db.js';
 import { EXERCISE_NAMES } from './exercises.js';
 import { ACHIEVEMENTS, unlockedIds, unseen, markSeen } from './achievements.js';
 import { todayGoal, setDailyGoal, setTodayGoal } from './goal.js';
+import { getProfile, profileOf, PROFILES } from './profile.js';
 import {
   initCloud, onCloudChange, cloudState, isSignedIn, signIn, signOut, sync, syncSoon,
 } from './cloud.js';
@@ -12,7 +13,8 @@ import {
 const $ = (id) => document.getElementById(id);
 const BACKUP_KEY = 'ft.lastBackup';
 
-let sets = []; // все подходы, новые сверху — держим под рукой для экспорта
+let sets = []; // подходы текущего профиля, новые сверху
+let allProfiles = []; // подходы всех профилей — для резервной копии
 let editing = null;
 let showScreen = () => {};
 
@@ -96,7 +98,9 @@ function setRow(s) {
 
 export async function refresh() {
   try {
-    sets = await allSets();
+    // Только подходы текущего профиля («Я» или «Kids»).
+    allProfiles = await allSets();
+    sets = allProfiles.filter((s) => profileOf(s) === getProfile());
   } catch (err) {
     console.error(err);
     sets = [];
@@ -149,6 +153,7 @@ export async function recordSet(record) {
       startedAt: (record.startedAt || record.endedAt).toISOString(),
       endedAt: record.endedAt.toISOString(),
       reason: record.reason,
+      profile: getProfile(),
     });
     await refresh();
     syncSoon();
@@ -512,7 +517,7 @@ async function exportJson() {
     app: 'fitness-tracker',
     format: 1,
     exportedAt: new Date().toISOString(),
-    sets: sets.map(({ exercise, reps, startedAt, endedAt, reason }) => ({ exercise, reps, startedAt, endedAt, reason })),
+    sets: allProfiles.map(({ exercise, reps, startedAt, endedAt, reason, profile }) => ({ exercise, reps, startedAt, endedAt, reason, profile: profile || 'me' })),
   };
   const ok = await saveFile(`trenirovki-${stamp()}.json`, JSON.stringify(data, null, 2), 'application/json');
   if (ok) {
@@ -523,9 +528,9 @@ async function exportJson() {
 
 // Таблица для Excel / Numbers: разделитель «;» и метка UTF-8, чтобы русский текст не поломался.
 async function exportCsv() {
-  const rows = [['Дата', 'Начало', 'Конец', 'Упражнение', 'Повторения']];
-  for (const s of [...sets].reverse()) {
-    rows.push([dayKey(s.startedAt), timeOf(s.startedAt), timeOf(s.endedAt), nameOf(s.exercise), s.reps]);
+  const rows = [['Дата', 'Начало', 'Конец', 'Профиль', 'Упражнение', 'Повторения']];
+  for (const s of [...allProfiles].reverse()) {
+    rows.push([dayKey(s.startedAt), timeOf(s.startedAt), timeOf(s.endedAt), PROFILES[profileOf(s)], nameOf(s.exercise), s.reps]);
   }
   const csv = '﻿' + rows.map((r) => r.join(';')).join('\r\n');
   await saveFile(`trenirovki-${stamp()}.csv`, csv, 'text/csv');

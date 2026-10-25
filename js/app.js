@@ -3,7 +3,8 @@ import { RepCounter, Smoother } from './counter.js';
 import { EXERCISES } from './exercises.js';
 import { getLandmarker, drawPose } from './pose.js';
 import { KeepAwake, Sound } from './device.js';
-import { initHistory, recordSet, showSummary, bestSet, todayReps, currentGoal } from './history.js';
+import { initHistory, recordSet, showSummary, bestSet, todayReps, currentGoal, refresh } from './history.js';
+import { getProfile, setProfile, applyProfileTheme, PROFILES } from './profile.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -36,7 +37,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 12;
+const APP_VERSION = 13;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -63,6 +64,7 @@ let lastVideoTime = -1;
 let set = null;
 // Тренировка — от «Начать» до «Закончить»: её подходы попадают в итоги.
 let session = null;
+let accent = '#D7FF39'; // цвет профиля для скелета
 let lastSeenAt = 0;
 let fps = { frames: 0, since: 0, value: 0 };
 let wakeMode = '';
@@ -101,6 +103,23 @@ function showScreen(name) {
 }
 
 initHistory({ show: showScreen });
+
+// Переключатель «Я / Kids»: у каждого профиля свой журнал, цель, рекорды и достижения.
+function renderProfileSwitch() {
+  document.querySelectorAll('.profile-switch button').forEach((b) => {
+    b.setAttribute('aria-checked', String(b.dataset.profile === getProfile()));
+  });
+}
+document.querySelectorAll('.profile-switch button').forEach((b) => {
+  b.addEventListener('click', () => {
+    if (b.dataset.profile === getProfile()) return;
+    setProfile(b.dataset.profile);
+    renderProfileSwitch();
+    refresh();
+  });
+});
+applyProfileTheme();
+renderProfileSwitch();
 
 // ---------- Настройки ----------
 
@@ -156,7 +175,8 @@ async function startWorkout() {
   }
 
   analyzer = EXERCISES[exerciseKey]();
-  ui.exTitle.textContent = analyzer.name;
+  ui.exTitle.textContent = getProfile() === 'me' ? analyzer.name : `${PROFILES[getProfile()]}: ${analyzer.name}`;
+  accent = getComputedStyle(document.body).getPropertyValue('--lime').trim() || '#D7FF39';
   showScreen('workout');
   setLoading('Включаю камеру…');
 
@@ -402,7 +422,7 @@ function loop() {
   trackDepth(info, value);
 
   const phase = counter.phase;
-  const color = phase === 'work' ? '#B98CFF' : '#D7FF39';
+  const color = phase === 'work' ? '#B98CFF' : accent;
   drawPose(canvas.getContext('2d'), lm, { highlight: info.joints, highlightColor: color });
 
   if (phase === 'unknown') setStatus(analyzer.startHint, 'warn');

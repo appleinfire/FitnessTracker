@@ -157,6 +157,7 @@ const toRow = (r) => ({
   ended_at: r.endedAt,
   reason: r.reason ?? null,
   deleted: Boolean(r.deleted),
+  profile: r.profile || 'me',
 });
 
 const iso = (value) => new Date(value).toISOString();
@@ -184,7 +185,7 @@ async function pull() {
   let since = store.get(PULL_KEY) || '1970-01-01T00:00:00Z';
   let changed = 0;
   for (;;) {
-    const rows = await api(`/rest/v1/sets?select=id,exercise,reps,started_at,ended_at,reason,deleted,updated_at&updated_at=gt.${encodeURIComponent(since)}&order=updated_at.asc&limit=${PAGE}`);
+    const rows = await api(`/rest/v1/sets?select=id,exercise,reps,started_at,ended_at,reason,deleted,updated_at,profile&updated_at=gt.${encodeURIComponent(since)}&order=updated_at.asc&limit=${PAGE}`);
     if (!rows.length) break;
     const local = new Map((await allRecords()).map((r) => [r.uid, r]));
     const updates = [];
@@ -192,7 +193,7 @@ async function pull() {
       const mine = local.get(row.id);
       if (mine?.dirty) continue;          // своё изменение новее — уйдёт при следующей отправке
       if (!mine && row.deleted) continue; // удалённое, которого здесь и не было
-      if (mine && mine.reps === row.reps && Boolean(mine.deleted) === row.deleted) continue;
+      if (mine && mine.reps === row.reps && Boolean(mine.deleted) === row.deleted && (mine.profile || 'me') === row.profile) continue;
       updates.push({
         ...(mine || {}),
         uid: row.id,
@@ -201,6 +202,7 @@ async function pull() {
         startedAt: iso(row.started_at),
         endedAt: iso(row.ended_at),
         reason: row.reason,
+        profile: row.profile || 'me',
         deleted: row.deleted,
         updatedAt: iso(row.updated_at),
         dirty: false,
@@ -245,7 +247,9 @@ export function sync() {
         const offline = !navigator.onLine || err instanceof TypeError;
         setState(offline
           ? { status: 'offline', message: '' }
-          : { status: 'error', message: err.message });
+          : { status: 'error', message: /profile/.test(err.message)
+            ? 'в таблице Supabase нет колонки profile — выполните строку SQL из инструкции.'
+            : err.message });
         return;
       }
     } while (again);

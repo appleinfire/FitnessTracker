@@ -1,8 +1,12 @@
 // Цель на день: сколько повторений (всех упражнений вместе) сделать за день.
 // «Каждый день» действует, пока её не поменяют; «только на сегодня» — до полуночи.
 
-const KEY = 'ft.goal';
+import { profileKey } from './profile.js';
+
+const BASE_KEY = 'ft.goal';
 const DEFAULT_GOAL = 100;
+// У детей своя цель; пока её не задали — вдвое меньше.
+const defaultGoal = () => (profileKey(BASE_KEY) === BASE_KEY ? DEFAULT_GOAL : DEFAULT_GOAL / 2);
 
 const today = () => {
   const d = new Date();
@@ -11,14 +15,14 @@ const today = () => {
 
 function read() {
   try {
-    return { daily: DEFAULT_GOAL, override: null, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    return { daily: defaultGoal(), override: null, ...JSON.parse(localStorage.getItem(profileKey(BASE_KEY)) || '{}') };
   } catch {
-    return { daily: DEFAULT_GOAL, override: null };
+    return { daily: defaultGoal(), override: null };
   }
 }
 
 function write(data) {
-  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* нет доступа */ }
+  try { localStorage.setItem(profileKey(BASE_KEY), JSON.stringify(data)); } catch { /* нет доступа */ }
 }
 
 // Цель на сегодня и откуда она: { value, todayOnly, daily }.
