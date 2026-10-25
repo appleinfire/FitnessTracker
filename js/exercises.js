@@ -279,8 +279,8 @@ class JumpingJack {
 // каждый перепрыг в любую сторону — повторение. Сторона определяется по щиколоткам:
 // обе слева от линии или обе справа.
 
-// Половина ширины «речки» между двумя линиями, в долях ширины кадра (у ног).
-const RIVER_HALF = 0.06;
+// Половина расстояния между двумя линиями, в долях ширины кадра (у ног).
+const TWO_LINES_HALF = 0.13;
 
 // Одна светящаяся линия на полу: от низа кадра (xBottom) до ног (xTop, top).
 function strip(ctx, xBottom, xTop, top, tint, flash) {
@@ -316,7 +316,7 @@ class LineHop {
   //       'moving' — линия едет по полу, надо подпрыгнуть, когда она проезжает под ногами.
   constructor(mode = 'static') {
     this.moving = mode === 'moving';
-    this.double = mode === 'double'; // две линии рядом — «речка», её надо перепрыгнуть целиком
+    this.double = mode === 'double'; // две линии: через первую, потом через вторую — одно очко
     this.noPauseEnd = this.moving; // в игре подход заканчивается, только когда ребёнок ушёл из кадра
     this.reset();
   }
@@ -333,9 +333,9 @@ class LineHop {
     this.zoneEnter = null;
     this.lastT = 0;
     this.prevT = 0;
-    this.side = null;     // «речка»: с какой стороны ребёнок — 'L' или 'R'
-    this.wet = false;
-    this.wetSince = 0;
+    this.from = null;     // две линии: с какой стороны начат прыжок — 'L' или 'R'
+    this.mid = false;     // уже перепрыгнул первую и стоит между линиями
+    this.midSince = 0;
   }
 
   onRep(t) { this.flashAt = t; }
@@ -350,7 +350,7 @@ class LineHop {
     const xs = [lm[LM.lAnkle].x, lm[LM.rAnkle].x];
     this.feetY = avgY(lm, [LM.lAnkle, LM.rAnkle]);
     if (this.moving) return this.game(lm, xs, t);
-    if (this.double) return this.river(lm, xs, t);
+    if (this.double) return this.twoLines(lm, xs, t);
     return this.still(lm, xs);
   }
 
@@ -382,48 +382,46 @@ class LineHop {
     return Math.max(0.05, this.ground - avgY(lm, [LM.lHip, LM.rHip]));
   }
 
-  // «Речка»: две линии рядом. Прыжок засчитан, если ребёнок оказался по другую сторону
-  // обеих линий и ни разу не встал ногой между ними.
-  river(lm, xs, t) {
-    const leg = this.updateGround(lm, t);
-    const g = RIVER_HALF;
+  // Две линии на расстоянии друг от друга: прыжок через первую (приземлиться между ними),
+  // потом через вторую — одно очко. Потом так же обратно.
+  twoLines(lm, xs, t) {
+    const g = TWO_LINES_HALF;
+    const lo = Math.min(...xs);
+    const hi = Math.max(...xs);
+    let zone = null;
+    if (hi < this.lineX - g) zone = 'L';
+    else if (lo > this.lineX + g) zone = 'R';
+    else if (lo > this.lineX - g && hi < this.lineX + g) zone = 'M';
+
     let repNow = false;
-    let missNow = false;
-    const zone = Math.max(...xs) < this.lineX - g ? 'L' : Math.min(...xs) > this.lineX + g ? 'R' : null;
-    if (zone) {
-      if (this.side && zone !== this.side) {
-        if (this.wet) { missNow = true; this.missAt = t; } else repNow = true;
-      }
-      this.side = zone;
-      this.wet = false;
-      this.wetSince = 0;
-    } else {
-      // Нога на полу между линиями дольше 150 мс — «наступила в речку».
-      const inRiver = [LM.lAnkle, LM.rAnkle].some((i) => {
-        const a = lm[i];
-        return Math.abs(a.x - this.lineX) < g && (this.ground - a.y) / leg < 0.05;
-      });
-      if (inRiver) {
-        this.wetSince = this.wetSince || t;
-        if (t - this.wetSince > 150) this.wet = true;
-      } else {
-        this.wetSince = 0;
+    let halfNow = false;
+    if (zone === 'L' || zone === 'R') {
+      // Пришёл на другую сторону через середину — очко.
+      if (this.mid && this.from && zone !== this.from) repNow = true;
+      this.from = zone;
+      this.mid = false;
+    } else if (zone === 'M' && this.from && !this.mid) {
+      // Приземлился между линиями (а не пролетел над серединой) — пробыл там ≥ 180 мс.
+      this.midSince = this.midSince || t;
+      if (t - this.midSince >= 180) {
+        this.mid = true;
+        halfNow = true;
       }
     }
-    const missed = t - this.missAt < 1200;
+    if (zone !== 'M') this.midSince = 0;
+    let text = 'Встань сбоку от линий';
+    if (this.from) text = this.mid ? 'Теперь через вторую!' : 'Прыгай через первую линию!';
     return {
       ok: true,
       game: true,
       repNow,
-      missNow,
-      status: missed
-        ? { text: 'Ой, в речку! Ещё раз', kind: 'warn' }
-        : { text: this.side ? 'Разбегись и перепрыгни обе линии!' : 'Встань сбоку от линий', kind: this.side ? 'rest' : 'warn' },
+      halfNow,
+      status: { text, kind: this.from ? (this.mid ? 'work' : 'rest') : 'warn' },
       value: 0,
       rule: { dir: 'above', work: 1, rest: -1 },
       range: [-1, 1],
       noRing: true,
-      metrics: [['сторона', this.side === 'L' ? -100 : this.side === 'R' ? 100 : 0, '%']],
+      metrics: [['зона', { L: -100, M: 0, R: 100 }[zone] ?? 50, '%']],
       joints: [LM.lAnkle, LM.rAnkle],
     };
   }
@@ -497,22 +495,23 @@ class LineHop {
       strip(ctx, cx, cx, top, tint, flash);
       return;
     }
-    // Две линии и «речка» между ними. У ног расстояние между линиями — как при подсчёте,
-    // ближе к телефону линии расходятся (перспектива).
-    const g = RIVER_HALF * w;
+    // Две линии на расстоянии: у ног — как при подсчёте, ближе к телефону расходятся (перспектива).
+    // Первая перепрыгнутая линия светится белым, пока ребёнок между линиями.
+    const g = TWO_LINES_HALF * w;
     const cx = this.lineX * w;
     ctx.save();
-    ctx.fillStyle = t - this.missAt < 400 ? 'rgba(255, 77, 77, 0.35)' : 'rgba(61, 140, 255, 0.35)';
+    ctx.fillStyle = this.mid ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)';
     ctx.beginPath();
-    ctx.moveTo(cx - g * 1.8, h);
+    ctx.moveTo(cx - g * 1.5, h);
     ctx.lineTo(cx - g, top);
     ctx.lineTo(cx + g, top);
-    ctx.lineTo(cx + g * 1.8, h);
+    ctx.lineTo(cx + g * 1.5, h);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-    strip(ctx, cx - g * 1.8, cx - g, top, tint, flash);
-    strip(ctx, cx + g * 1.8, cx + g, top, tint, flash);
+    const done = (side) => (this.mid && this.from === side ? '#ffffff' : tint);
+    strip(ctx, cx - g * 1.5, cx - g, top, done('L'), flash);
+    strip(ctx, cx + g * 1.5, cx + g, top, done('R'), flash);
   }
 }
 

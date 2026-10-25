@@ -38,7 +38,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 17;
+const APP_VERSION = 18;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -447,6 +447,7 @@ function loop() {
   if (info.game) {
     // Игра сама решает, когда засчитать прыжок, а когда «мимо».
     if (info.repNow) onRep(t);
+    if (info.halfNow && settings.beep) sound.beep(660, 90); // полпути: первая линия позади
     if (info.missNow && settings.beep) sound.beep(220, 260);
   } else if (value != null && counter.update(value, t, info.rule, analyzer.countOn)) {
     onRep(t);
