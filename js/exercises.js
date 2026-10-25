@@ -286,21 +286,46 @@ class LineHop {
   countOn = 'both';
   lineX = 0.5;
 
-  reset() { this.flashAt = 0; }
+  // mode: 'static' — линия стоит, прыгать через неё туда-обратно;
+  //       'moving' — линия едет по полу, надо подпрыгнуть, когда она проезжает под ногами.
+  constructor(mode = 'static') {
+    this.moving = mode === 'moving';
+    this.noPauseEnd = this.moving; // в игре подход заканчивается, только когда ребёнок ушёл из кадра
+    this.reset();
+  }
+
+  reset() {
+    this.flashAt = 0;
+    this.missAt = 0;
+    this.ground = null;   // уровень пола (щиколотки стоя), в долях высоты кадра
+    this.airAt = -1e9;    // когда последний раз обе ноги были над полом
+    this.state = 'idle';  // 'idle' — пауза перед заездом, 'run' — линия едет
+    this.nextStart = 0;
+    this.pos = 0;         // где линия на экране: 0 — левый край, 1 — правый
+    this.speed = 0.3;     // экранов в секунду
+    this.zoneEnter = null;
+    this.lastT = 0;
+  }
+
   onRep(t) { this.flashAt = t; }
 
-  analyze(lm) {
+  analyze(lm, world, t) {
     const need = [LM.lHip, LM.rHip, LM.lAnkle, LM.rAnkle];
     if (Math.min(...need.map((i) => vis(lm[i]))) < 0.3) {
+      this.lastT = 0; // игра на паузе, пока не видно ног
       return { ok: false, hint: 'Не видно ног — отойди дальше, чтобы были видны ступни' };
     }
-    const hipWidth = Math.max(0.02, Math.abs(lm[LM.lHip].x - lm[LM.rHip].x));
     const xs = [lm[LM.lAnkle].x, lm[LM.rAnkle].x];
+    this.feetY = avgY(lm, [LM.lAnkle, LM.rAnkle]);
+    return this.moving ? this.game(lm, xs, t) : this.still(lm, xs);
+  }
+
+  still(lm, xs) {
+    const hipWidth = Math.max(0.02, Math.abs(lm[LM.lHip].x - lm[LM.rHip].x));
     // Насколько обе ноги по одну сторону от линии (в ширинах таза); 0 — стоит на линии.
     let side = 0;
     if (Math.min(...xs) > this.lineX) side = (Math.min(...xs) - this.lineX) / hipWidth;
     else if (Math.max(...xs) < this.lineX) side = (Math.max(...xs) - this.lineX) / hipWidth;
-    this.feetY = avgY(lm, [LM.lAnkle, LM.rAnkle]);
     return {
       ok: true,
       value: side,
@@ -313,17 +338,79 @@ class LineHop {
     };
   }
 
-  // Светящаяся «лента» на полу: от низа кадра до ног и чуть дальше, сужается в перспективе.
+  game(lm, xs, t) {
+    // Отрыв от пола: нижняя из двух ног выше уровня пола на 8% длины ноги.
+    const lowFoot = Math.max(lm[LM.lAnkle].y, lm[LM.rAnkle].y);
+    const dt = this.lastT ? (t - this.lastT) / 1000 : 0;
+    this.lastT = t;
+    if (this.ground == null || lowFoot > this.ground) this.ground = lowFoot;
+    else this.ground -= (this.ground - lowFoot) * Math.min(1, dt * 0.3); // медленно подстраиваемся
+    const leg = Math.max(0.05, this.ground - avgY(lm, [LM.lHip, LM.rHip]));
+    const lift = (this.ground - lowFoot) / leg;
+    if (lift > 0.08) this.airAt = t;
+
+    let repNow = false;
+    let missNow = false;
+    if (this.state === 'idle' && t >= this.nextStart) {
+      this.state = 'run';
+      this.pos = -0.05;
+    }
+    if (this.state === 'run') {
+      this.pos += this.speed * dt;
+      // Экран зеркальный: позиция на экране pos — это 1 − pos на кадре камеры.
+      const x = 1 - this.pos;
+      const inZone = x >= Math.min(...xs) - 0.03 && x <= Math.max(...xs) + 0.03;
+      if (inZone && this.zoneEnter == null) this.zoneEnter = t;
+      if (!inZone && this.zoneEnter != null) {
+        // Линия проехала под ногами: успел ли подпрыгнуть (с небольшим запасом по времени)?
+        if (this.airAt >= this.zoneEnter - 200) {
+          repNow = true;
+          this.speed = Math.min(0.75, this.speed * 1.08);
+        } else {
+          missNow = true;
+          this.missAt = t;
+          this.speed = Math.max(0.25, this.speed * 0.85);
+        }
+        this.zoneEnter = null;
+      }
+      if (this.pos > 1.05) {
+        this.state = 'idle';
+        this.nextStart = t + 800;
+      }
+    }
+
+    const missed = t - this.missAt < 1200;
+    return {
+      ok: true,
+      game: true,
+      repNow,
+      missNow,
+      status: missed
+        ? { text: 'Мимо! Ещё раз', kind: 'warn' }
+        : { text: this.state === 'run' ? 'Прыгай, когда линия под ногами!' : 'Приготовься…', kind: 'rest' },
+      value: 0,
+      rule: { dir: 'above', work: 1, rest: -1 },
+      range: [-1, 1],
+      noRing: true,
+      metrics: [['над полом', lift * 100, '%'], ['скорость', this.speed * 100, '%']],
+      joints: [LM.lAnkle, LM.rAnkle],
+    };
+  }
+
+  // Светящаяся «лента» на полу: от низа кадра до ног, сужается в перспективе.
   overlay(ctx, t, color) {
+    if (this.moving && this.state !== 'run' && t - this.missAt > 400) return;
     const { width: w, height: h } = ctx.canvas;
-    const top = Math.max(0.3, Math.min(0.85, (this.feetY || 0.85) - 0.18)) * h;
-    const cx = this.lineX * w;
+    const top = Math.max(0.35, Math.min(0.95, (this.feetY || 0.88) - 0.06)) * h;
+    const cx = (this.moving ? 1 - this.pos : this.lineX) * w;
     const flash = this.flashAt && t - this.flashAt < 350 ? 1 - (t - this.flashAt) / 350 : 0;
+    const miss = t - this.missAt < 400;
+    const tint = miss ? '#FF4D4D' : color;
     ctx.save();
-    ctx.shadowColor = color;
+    ctx.shadowColor = tint;
     ctx.shadowBlur = w * (0.02 + 0.04 * flash);
     const grad = ctx.createLinearGradient(0, h, 0, top);
-    grad.addColorStop(0, color);
+    grad.addColorStop(0, tint);
     grad.addColorStop(1, 'rgba(255,255,255,0.15)');
     ctx.fillStyle = flash ? '#ffffff' : grad;
     ctx.globalAlpha = 0.95;
@@ -345,5 +432,5 @@ export const EXERCISES = {
   pushup: () => new Pushup(),
   pullup: () => new Pullup(),
   jack: () => new JumpingJack(),
-  line: () => new LineHop(),
+  line: (s) => new LineHop(s?.lineMode),
 };

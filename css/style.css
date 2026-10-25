@@ -255,6 +255,14 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .ex-jack { --tint: #FF5FA2; }
 .ex-line { --tint: #FFC94D; grid-column: 1 / -1; min-height: 0; }
 .kids-only { display: none; }
+.line-mode { align-items: center; gap: 8px; margin-top: -6px; }
+.line-mode span { color: var(--mist); font-size: 15px; margin-right: 4px; }
+.line-mode button {
+  min-height: 42px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: var(--glass); font-size: 15px; font-weight: 600;
+}
+.line-mode button[aria-checked="true"] { background: #FFC94D; color: #1A1200; border-color: #FFC94D; }
 body.kids .kids-only { display: flex; }
 .exercise.selected {
   border-color: var(--tint);

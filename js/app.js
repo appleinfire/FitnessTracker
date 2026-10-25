@@ -16,6 +16,7 @@ const ui = {
   homeError: $('home-error'),
   history: $('history'),
   progress: $('progress'),
+  lineMode: $('line-mode'),
   data: $('data'),
   video: $('video'),
   canvas: $('overlay'),
@@ -37,7 +38,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 15;
+const APP_VERSION = 16;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -71,8 +72,24 @@ let wakeMode = '';
 
 // ---------- Главный экран ----------
 
+// Режим прыжков через линию: «стоит» или «едет» (игра).
+function renderLineMode() {
+  ui.lineMode.querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-checked', String(b.dataset.mode === settings.lineMode));
+  });
+}
+document.querySelectorAll('#line-mode button').forEach((b) => {
+  b.addEventListener('click', () => {
+    settings.lineMode = b.dataset.mode;
+    saveSettings(settings);
+    renderLineMode();
+  });
+});
+
 function selectExercise(key) {
   exerciseKey = key;
+  ui.lineMode.classList.toggle('hidden', key !== 'line');
+  renderLineMode();
   document.querySelectorAll('.exercise').forEach((b) => {
     const on = b.dataset.exercise === key;
     b.classList.toggle('selected', on);
@@ -181,7 +198,7 @@ async function startWorkout() {
     return;
   }
 
-  analyzer = EXERCISES[exerciseKey]();
+  analyzer = EXERCISES[exerciseKey](settings);
   ui.exTitle.textContent = getProfile() === 'me' ? analyzer.name : `${PROFILES[getProfile()]}: ${analyzer.name}`;
   accent = getComputedStyle(document.body).getPropertyValue('--lime').trim() || '#D7FF39';
   showScreen('workout');
@@ -427,7 +444,13 @@ function loop() {
 
   lastSeenAt = t;
   const value = smoother.update(info.value, t);
-  if (value != null && counter.update(value, t, info.rule, analyzer.countOn)) onRep(t);
+  if (info.game) {
+    // Игра сама решает, когда засчитать прыжок, а когда «мимо».
+    if (info.repNow) onRep(t);
+    if (info.missNow && settings.beep) sound.beep(220, 260);
+  } else if (value != null && counter.update(value, t, info.rule, analyzer.countOn)) {
+    onRep(t);
+  }
   trackDepth(info, value);
 
   const phase = counter.phase;
@@ -437,11 +460,12 @@ function loop() {
 
   if (phase === 'unknown') setStatus(analyzer.startHint, 'warn');
   else setStatus(analyzer.prompts[phase], phase);
+  if (info.status) setStatus(info.status.text, info.status.kind);
 
   updateRing(value, info);
   updateSetClock();
 
-  if (set.reps > 0) {
+  if (set.reps > 0 && !analyzer.noPauseEnd) {
     const left = settings.setEndSec * 1000 - (t - set.lastRepAt);
     if (left <= 0) finishSet('pause');
     else ui.setTimer.textContent = left < 4000 ? `Конец подхода через ${Math.ceil(left / 1000)}…` : '';
@@ -505,7 +529,7 @@ function updateDebug(info, value) {
     const { dir, work, rest } = info.rule;
     const [wSign, rSign] = dir === 'below' ? ['<', '>'] : ['>', '<'];
     for (const [label, v, unit] of info.metrics) parts.push(`${label} ${f(v, unit)}`);
-    parts.push(`сглаж. ${f(value, info.unit)} (работа ${wSign} ${work}, отдых ${rSign} ${rest})`);
+    if (!info.game) parts.push(`сглаж. ${f(value, info.unit)} (работа ${wSign} ${work}, отдых ${rSign} ${rest})`);
     if (depth.last != null) parts.push(`предел движения ${f(depth.last, info.unit)} (без сглаж. ${f(depth.lastRaw, info.unit)})`);
   }
   parts.push(`${fps.value} к/с`, pose?.delegate === 'GPU' ? 'GPU' : 'CPU');
