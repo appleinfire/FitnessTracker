@@ -130,9 +130,11 @@ function badge(a, { got, fresh }) {
 function renderAchievements() {
   const got = unlockedIds(sets);
   const fresh = unseen(got);
-  $('ach-count').textContent = `${got.size} из ${ACHIEVEMENTS.length}`;
+  // Детские награды показываем только в профиле Kids.
+  const list = ACHIEVEMENTS.filter((a) => !a.kidsOnly || getProfile() === 'kids');
+  $('ach-count').textContent = `${list.filter((a) => got.has(a.id)).length} из ${list.length}`;
   // Полученные — первыми.
-  const ordered = [...ACHIEVEMENTS].sort((a, b) => Number(got.has(b.id)) - Number(got.has(a.id)));
+  const ordered = [...list].sort((a, b) => Number(got.has(b.id)) - Number(got.has(a.id)));
   $('ach-grid').replaceChildren(...ordered.map((a) => {
     const el = badge(a, { got: got.has(a.id), fresh: fresh.has(a.id) });
     // На главном экране — только значок и название; условие показываем по нажатию.

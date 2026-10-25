@@ -37,7 +37,7 @@ const ui = {
 };
 
 // Номер версии виден внизу главного экрана. Держать равным VERSION в sw.js.
-const APP_VERSION = 14;
+const APP_VERSION = 15;
 $('version').textContent = `Версия ${APP_VERSION}`;
 
 const ABSENT_END_MS = 3000; // столько без человека в кадре — и подход окончен
@@ -114,12 +114,19 @@ document.querySelectorAll('.profile-switch button').forEach((b) => {
   b.addEventListener('click', () => {
     if (b.dataset.profile === getProfile()) return;
     setProfile(b.dataset.profile);
+    ensureExerciseAllowed();
     renderProfileSwitch();
     refresh();
   });
 });
+// Упражнения «только для детей» во взрослом профиле не показываются.
+function ensureExerciseAllowed() {
+  if (getProfile() !== 'kids' && exerciseKey === 'line') selectExercise('squat');
+}
+
 applyProfileTheme();
 renderProfileSwitch();
+ensureExerciseAllowed();
 
 // ---------- Настройки ----------
 
@@ -313,6 +320,7 @@ function onRep(t) {
     set.dayBefore = todayReps();
   }
   set.reps += 1;
+  analyzer.onRep?.(t);
   set.lastRepAt = t;
   ui.counter.textContent = String(set.reps);
   // Вспышка кольца: перезапускаем анимацию на каждом повторении.
@@ -406,6 +414,7 @@ function loop() {
 
   if (!info || !info.ok) {
     drawPose(canvas.getContext('2d'), lm);
+    analyzer.overlay?.(canvas.getContext('2d'), t, accent);
     smoother.reset();
     // Короткие пропадания (на долю секунды) не сбрасывают фазу повторения.
     if (t - lastSeenAt > 1000) counter.reset();
@@ -424,6 +433,7 @@ function loop() {
   const phase = counter.phase;
   const color = phase === 'work' ? '#B98CFF' : accent;
   drawPose(canvas.getContext('2d'), lm, { highlight: info.joints, highlightColor: color });
+  analyzer.overlay?.(canvas.getContext('2d'), t, accent);
 
   if (phase === 'unknown') setStatus(analyzer.startHint, 'warn');
   else setStatus(analyzer.prompts[phase], phase);
@@ -453,7 +463,7 @@ function setStatus(text, kind) {
 const RING_LENGTH = 553; // 2π · 88, как в index.html
 function updateRing(value, info) {
   let progress = 0;
-  if (value != null) {
+  if (value != null && !info.noRing) {
     const { dir, work, rest } = info.rule;
     progress = dir === 'below' ? (rest - value) / (rest - work) : (value - rest) / (work - rest);
     progress = Math.max(0, Math.min(1, progress));

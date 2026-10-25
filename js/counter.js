@@ -46,7 +46,8 @@ export class RepCounter {
 
   // rule: { dir: 'below' | 'above', work, rest } — при dir 'below' «работа»,
   //   когда значение ниже порога work, «отдых» — когда выше rest; при 'above' наоборот.
-  // countOn: 'return' — засчитать при возврате в «отдых», 'peak' — при достижении «работы».
+  // countOn: 'return' — засчитать при возврате в «отдых», 'peak' — при достижении «работы»,
+  //   'both' — каждый переход между сторонами (прыжки через линию туда и обратно).
   // Возвращает true, если только что засчитано повторение.
   update(value, t, { dir, work, rest }, countOn = 'return') {
     const isWork = dir === 'below' ? value <= work : value >= work;
@@ -54,7 +55,7 @@ export class RepCounter {
     let target = isWork ? 'work' : isRest ? 'rest' : null;
 
     // Пока не увидели исходное положение, ничего не считаем.
-    if (this.phase === 'unknown' && target === 'work') target = null;
+    if (this.phase === 'unknown' && target === 'work' && countOn !== 'both') target = null;
 
     if (!target || target === this.phase) {
       this.pending = null;
@@ -70,6 +71,7 @@ export class RepCounter {
     const prev = this.phase;
     this.phase = target;
     this.pending = null;
+    if (countOn === 'both') return prev !== 'unknown';
     return countOn === 'peak'
       ? prev === 'rest' && target === 'work'
       : prev === 'work' && target === 'rest';

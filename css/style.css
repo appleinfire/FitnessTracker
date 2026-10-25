@@ -253,6 +253,9 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .ex-squat { --tint: var(--violet); }
 .ex-pullup { --tint: #3DB8FF; }
 .ex-jack { --tint: #FF5FA2; }
+.ex-line { --tint: #FFC94D; grid-column: 1 / -1; min-height: 0; }
+.kids-only { display: none; }
+body.kids .kids-only { display: flex; }
 .exercise.selected {
   border-color: var(--tint);
   box-shadow: 0 0 0 1px var(--tint), 0 14px 36px -14px var(--tint);
@@ -381,6 +384,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .ic-squat { color: #A88BFF; }
 .ic-pullup { color: #3DB8FF; }
 .ic-jack { color: #FF5FA2; }
+.ic-line { color: #FFC94D; }
 
 .set-list { list-style: none; margin: 0; padding: 0; }
 .set-row {

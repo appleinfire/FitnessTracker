@@ -22,6 +22,7 @@ export const EXERCISE_NAMES = {
   pushup: 'Отжимания',
   pullup: 'Подтягивания',
   jack: 'Джампинг-джеки',
+  line: 'Прыжки через линию',
 };
 
 const LEGS = [[LM.lHip, LM.lKnee, LM.lAnkle], [LM.rHip, LM.rKnee, LM.rAnkle]];
@@ -273,9 +274,76 @@ class JumpingJack {
   }
 }
 
+// ---------- Прыжки через линию (для детей) ----------
+// Линия идёт по полу от телефона к ребёнку, посередине кадра. Прыгать — влево-вправо;
+// каждый перепрыг в любую сторону — повторение. Сторона определяется по щиколоткам:
+// обе слева от линии или обе справа.
+
+class LineHop {
+  name = EXERCISE_NAMES.line;
+  startHint = 'Встань сбоку от линии';
+  prompts = { rest: 'Прыгай через линию!', work: 'Прыгай через линию!' };
+  countOn = 'both';
+  lineX = 0.5;
+
+  reset() { this.flashAt = 0; }
+  onRep(t) { this.flashAt = t; }
+
+  analyze(lm) {
+    const need = [LM.lHip, LM.rHip, LM.lAnkle, LM.rAnkle];
+    if (Math.min(...need.map((i) => vis(lm[i]))) < 0.3) {
+      return { ok: false, hint: 'Не видно ног — отойди дальше, чтобы были видны ступни' };
+    }
+    const hipWidth = Math.max(0.02, Math.abs(lm[LM.lHip].x - lm[LM.rHip].x));
+    const xs = [lm[LM.lAnkle].x, lm[LM.rAnkle].x];
+    // Насколько обе ноги по одну сторону от линии (в ширинах таза); 0 — стоит на линии.
+    let side = 0;
+    if (Math.min(...xs) > this.lineX) side = (Math.min(...xs) - this.lineX) / hipWidth;
+    else if (Math.max(...xs) < this.lineX) side = (Math.max(...xs) - this.lineX) / hipWidth;
+    this.feetY = avgY(lm, [LM.lAnkle, LM.rAnkle]);
+    return {
+      ok: true,
+      value: side,
+      unit: '',
+      rule: { dir: 'above', work: 0.15, rest: -0.15 },
+      range: [-1, 1],
+      noRing: true, // кольцо только вспыхивает на прыжке, заполнять его нечем
+      metrics: [['сторона', side * 100, '%']],
+      joints: [LM.lAnkle, LM.rAnkle],
+    };
+  }
+
+  // Светящаяся «лента» на полу: от низа кадра до ног и чуть дальше, сужается в перспективе.
+  overlay(ctx, t, color) {
+    const { width: w, height: h } = ctx.canvas;
+    const top = Math.max(0.3, Math.min(0.85, (this.feetY || 0.85) - 0.18)) * h;
+    const cx = this.lineX * w;
+    const flash = this.flashAt && t - this.flashAt < 350 ? 1 - (t - this.flashAt) / 350 : 0;
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = w * (0.02 + 0.04 * flash);
+    const grad = ctx.createLinearGradient(0, h, 0, top);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, 'rgba(255,255,255,0.15)');
+    ctx.fillStyle = flash ? '#ffffff' : grad;
+    ctx.globalAlpha = 0.95;
+    const bottomHalf = w * 0.06;
+    const topHalf = w * 0.012;
+    ctx.beginPath();
+    ctx.moveTo(cx - bottomHalf, h);
+    ctx.lineTo(cx - topHalf, top);
+    ctx.lineTo(cx + topHalf, top);
+    ctx.lineTo(cx + bottomHalf, h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 export const EXERCISES = {
   squat: () => new Squat(),
   pushup: () => new Pushup(),
   pullup: () => new Pullup(),
   jack: () => new JumpingJack(),
+  line: () => new LineHop(),
 };
