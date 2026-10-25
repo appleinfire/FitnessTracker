@@ -279,6 +279,32 @@ class JumpingJack {
 // каждый перепрыг в любую сторону — повторение. Сторона определяется по щиколоткам:
 // обе слева от линии или обе справа.
 
+// Половина ширины «речки» между двумя линиями, в долях ширины кадра (у ног).
+const RIVER_HALF = 0.06;
+
+// Одна светящаяся линия на полу: от низа кадра (xBottom) до ног (xTop, top).
+function strip(ctx, xBottom, xTop, top, tint, flash) {
+  const { width: w, height: h } = ctx.canvas;
+  ctx.save();
+  ctx.shadowColor = tint;
+  ctx.shadowBlur = w * (0.02 + 0.04 * flash);
+  const grad = ctx.createLinearGradient(0, h, 0, top);
+  grad.addColorStop(0, tint);
+  grad.addColorStop(1, 'rgba(255,255,255,0.15)');
+  ctx.fillStyle = flash ? '#ffffff' : grad;
+  ctx.globalAlpha = 0.95;
+  const bottomHalf = w * 0.05;
+  const topHalf = w * 0.01;
+  ctx.beginPath();
+  ctx.moveTo(xBottom - bottomHalf, h);
+  ctx.lineTo(xTop - topHalf, top);
+  ctx.lineTo(xTop + topHalf, top);
+  ctx.lineTo(xBottom + bottomHalf, h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 class LineHop {
   name = EXERCISE_NAMES.line;
   startHint = 'Встань сбоку от линии';
@@ -290,6 +316,7 @@ class LineHop {
   //       'moving' — линия едет по полу, надо подпрыгнуть, когда она проезжает под ногами.
   constructor(mode = 'static') {
     this.moving = mode === 'moving';
+    this.double = mode === 'double'; // две линии рядом — «речка», её надо перепрыгнуть целиком
     this.noPauseEnd = this.moving; // в игре подход заканчивается, только когда ребёнок ушёл из кадра
     this.reset();
   }
@@ -305,6 +332,10 @@ class LineHop {
     this.speed = 0.3;     // экранов в секунду
     this.zoneEnter = null;
     this.lastT = 0;
+    this.prevT = 0;
+    this.side = null;     // «речка»: с какой стороны ребёнок — 'L' или 'R'
+    this.wet = false;
+    this.wetSince = 0;
   }
 
   onRep(t) { this.flashAt = t; }
@@ -313,11 +344,14 @@ class LineHop {
     const need = [LM.lHip, LM.rHip, LM.lAnkle, LM.rAnkle];
     if (Math.min(...need.map((i) => vis(lm[i]))) < 0.3) {
       this.lastT = 0; // игра на паузе, пока не видно ног
+      this.prevT = 0;
       return { ok: false, hint: 'Не видно ног — отойди дальше, чтобы были видны ступни' };
     }
     const xs = [lm[LM.lAnkle].x, lm[LM.rAnkle].x];
     this.feetY = avgY(lm, [LM.lAnkle, LM.rAnkle]);
-    return this.moving ? this.game(lm, xs, t) : this.still(lm, xs);
+    if (this.moving) return this.game(lm, xs, t);
+    if (this.double) return this.river(lm, xs, t);
+    return this.still(lm, xs);
   }
 
   still(lm, xs) {
@@ -338,14 +372,68 @@ class LineHop {
     };
   }
 
-  game(lm, xs, t) {
-    // Отрыв от пола: нижняя из двух ног выше уровня пола на 8% длины ноги.
+  // Уровень пола (по щиколоткам стоя) и длина ноги — чтобы понимать, где нога: на полу или в воздухе.
+  updateGround(lm, t) {
     const lowFoot = Math.max(lm[LM.lAnkle].y, lm[LM.rAnkle].y);
     const dt = this.lastT ? (t - this.lastT) / 1000 : 0;
     this.lastT = t;
     if (this.ground == null || lowFoot > this.ground) this.ground = lowFoot;
     else this.ground -= (this.ground - lowFoot) * Math.min(1, dt * 0.3); // медленно подстраиваемся
-    const leg = Math.max(0.05, this.ground - avgY(lm, [LM.lHip, LM.rHip]));
+    return Math.max(0.05, this.ground - avgY(lm, [LM.lHip, LM.rHip]));
+  }
+
+  // «Речка»: две линии рядом. Прыжок засчитан, если ребёнок оказался по другую сторону
+  // обеих линий и ни разу не встал ногой между ними.
+  river(lm, xs, t) {
+    const leg = this.updateGround(lm, t);
+    const g = RIVER_HALF;
+    let repNow = false;
+    let missNow = false;
+    const zone = Math.max(...xs) < this.lineX - g ? 'L' : Math.min(...xs) > this.lineX + g ? 'R' : null;
+    if (zone) {
+      if (this.side && zone !== this.side) {
+        if (this.wet) { missNow = true; this.missAt = t; } else repNow = true;
+      }
+      this.side = zone;
+      this.wet = false;
+      this.wetSince = 0;
+    } else {
+      // Нога на полу между линиями дольше 150 мс — «наступила в речку».
+      const inRiver = [LM.lAnkle, LM.rAnkle].some((i) => {
+        const a = lm[i];
+        return Math.abs(a.x - this.lineX) < g && (this.ground - a.y) / leg < 0.05;
+      });
+      if (inRiver) {
+        this.wetSince = this.wetSince || t;
+        if (t - this.wetSince > 150) this.wet = true;
+      } else {
+        this.wetSince = 0;
+      }
+    }
+    const missed = t - this.missAt < 1200;
+    return {
+      ok: true,
+      game: true,
+      repNow,
+      missNow,
+      status: missed
+        ? { text: 'Ой, в речку! Ещё раз', kind: 'warn' }
+        : { text: this.side ? 'Разбегись и перепрыгни обе линии!' : 'Встань сбоку от линий', kind: this.side ? 'rest' : 'warn' },
+      value: 0,
+      rule: { dir: 'above', work: 1, rest: -1 },
+      range: [-1, 1],
+      noRing: true,
+      metrics: [['сторона', this.side === 'L' ? -100 : this.side === 'R' ? 100 : 0, '%']],
+      joints: [LM.lAnkle, LM.rAnkle],
+    };
+  }
+
+  game(lm, xs, t) {
+    // Отрыв от пола: нижняя из двух ног выше уровня пола на 8% длины ноги.
+    const lowFoot = Math.max(lm[LM.lAnkle].y, lm[LM.rAnkle].y);
+    const leg = this.updateGround(lm, t);
+    const dt = this.prevT ? (t - this.prevT) / 1000 : 0;
+    this.prevT = t;
     const lift = (this.ground - lowFoot) / leg;
     if (lift > 0.08) this.airAt = t;
 
@@ -402,28 +490,29 @@ class LineHop {
     if (this.moving && this.state !== 'run' && t - this.missAt > 400) return;
     const { width: w, height: h } = ctx.canvas;
     const top = Math.max(0.35, Math.min(0.95, (this.feetY || 0.88) - 0.06)) * h;
-    const cx = (this.moving ? 1 - this.pos : this.lineX) * w;
     const flash = this.flashAt && t - this.flashAt < 350 ? 1 - (t - this.flashAt) / 350 : 0;
-    const miss = t - this.missAt < 400;
-    const tint = miss ? '#FF4D4D' : color;
+    const tint = t - this.missAt < 400 ? '#FF4D4D' : color;
+    if (!this.double) {
+      const cx = (this.moving ? 1 - this.pos : this.lineX) * w;
+      strip(ctx, cx, cx, top, tint, flash);
+      return;
+    }
+    // Две линии и «речка» между ними. У ног расстояние между линиями — как при подсчёте,
+    // ближе к телефону линии расходятся (перспектива).
+    const g = RIVER_HALF * w;
+    const cx = this.lineX * w;
     ctx.save();
-    ctx.shadowColor = tint;
-    ctx.shadowBlur = w * (0.02 + 0.04 * flash);
-    const grad = ctx.createLinearGradient(0, h, 0, top);
-    grad.addColorStop(0, tint);
-    grad.addColorStop(1, 'rgba(255,255,255,0.15)');
-    ctx.fillStyle = flash ? '#ffffff' : grad;
-    ctx.globalAlpha = 0.95;
-    const bottomHalf = w * 0.06;
-    const topHalf = w * 0.012;
+    ctx.fillStyle = t - this.missAt < 400 ? 'rgba(255, 77, 77, 0.35)' : 'rgba(61, 140, 255, 0.35)';
     ctx.beginPath();
-    ctx.moveTo(cx - bottomHalf, h);
-    ctx.lineTo(cx - topHalf, top);
-    ctx.lineTo(cx + topHalf, top);
-    ctx.lineTo(cx + bottomHalf, h);
+    ctx.moveTo(cx - g * 1.8, h);
+    ctx.lineTo(cx - g, top);
+    ctx.lineTo(cx + g, top);
+    ctx.lineTo(cx + g * 1.8, h);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+    strip(ctx, cx - g * 1.8, cx - g, top, tint, flash);
+    strip(ctx, cx + g * 1.8, cx + g, top, tint, flash);
   }
 }
 

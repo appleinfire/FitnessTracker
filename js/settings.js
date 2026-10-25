@@ -20,7 +20,7 @@ export const DEFAULTS = {
   pullupElbowBottom: 150,
   jackTop: 70,           // джампинг-джек «наверху»: руки и ноги разведены (%)
   jackBottom: 30,        // «внизу»: руки опущены, ноги вместе (%)
-  lineMode: 'static',    // прыжки через линию: 'static' — стоит, 'moving' — едет (игра)
+  lineMode: 'static',    // прыжки через линию: 'static' — одна, 'double' — две («речка»), 'moving' — едет (игра)
   setEndSec: 8,          // подход заканчивается после стольких секунд без повторений
   beep: true,
   voice: false,
