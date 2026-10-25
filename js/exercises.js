@@ -21,6 +21,7 @@ export const EXERCISE_NAMES = {
   squat: 'Приседания',
   pushup: 'Отжимания',
   pullup: 'Подтягивания',
+  jack: 'Джампинг-джеки',
 };
 
 const LEGS = [[LM.lHip, LM.lKnee, LM.lAnkle], [LM.rHip, LM.rKnee, LM.rAnkle]];
@@ -230,8 +231,51 @@ class Pullup {
   }
 }
 
+// ---------- Джампинг-джеки ----------
+
+class JumpingJack {
+  name = EXERCISE_NAMES.jack;
+  startHint = 'Встаньте прямо: ноги вместе, руки внизу';
+  prompts = { rest: 'Прыжок: руки вверх ↑', work: 'Обратно ↓' };
+  countOn = 'peak'; // темп быстрый — засчитываем сразу, как только руки вверху и ноги врозь
+
+  reset() {}
+
+  analyze(lm, world, t, s) {
+    const need = [LM.lShoulder, LM.rShoulder, LM.lWrist, LM.rWrist, LM.lHip, LM.rHip, LM.lAnkle, LM.rAnkle];
+    if (Math.min(...need.map((i) => vis(lm[i]))) < 0.3) {
+      return { ok: false, hint: 'Нужно видеть всё тело — от рук над головой до ступней' };
+    }
+    const shoulderY = avgY(lm, [LM.lShoulder, LM.rShoulder]);
+    const hipY = avgY(lm, [LM.lHip, LM.rHip]);
+    const torso = Math.abs(hipY - shoulderY);
+    const hipWidth = Math.abs(lm[LM.lHip].x - lm[LM.rHip].x);
+    if (torso < 0.02 || hipWidth < 0.01) return { ok: false, hint: this.startHint };
+
+    // Руки: −1 — внизу у бёдер, +1 — над головой (в длинах туловища).
+    const arms = (shoulderY - avgY(lm, [LM.lWrist, LM.rWrist])) / torso;
+    // Ноги: расстояние между щиколотками в ширинах таза (вместе ≈ 1, врозь ≈ 3).
+    const legs = Math.abs(lm[LM.lAnkle].x - lm[LM.rAnkle].x) / hipWidth;
+    const clamp = (v) => Math.max(0, Math.min(100, v));
+    const armsPct = clamp(((arms + 1) / 2) * 100);
+    const legsPct = clamp(((legs - 1.2) / 1.6) * 100);
+    const value = (armsPct + legsPct) / 2;
+
+    return {
+      ok: true,
+      value,
+      unit: '%',
+      rule: { dir: 'above', work: s.jackTop, rest: s.jackBottom },
+      range: [0, 100],
+      metrics: [['руки', armsPct, '%'], ['ноги', legsPct, '%'], ['вместе', value, '%']],
+      joints: [LM.lWrist, LM.rWrist, LM.lAnkle, LM.rAnkle],
+    };
+  }
+}
+
 export const EXERCISES = {
   squat: () => new Squat(),
   pushup: () => new Pushup(),
   pullup: () => new Pullup(),
+  jack: () => new JumpingJack(),
 };

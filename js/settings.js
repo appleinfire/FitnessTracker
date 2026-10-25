@@ -18,6 +18,8 @@ export const DEFAULTS = {
   pullupHeadBottom: 40,  // внизу, если опустилась ниже (%; 0% — полный вис)
   pullupElbowTop: 90,
   pullupElbowBottom: 150,
+  jackTop: 70,           // джампинг-джек «наверху»: руки и ноги разведены (%)
+  jackBottom: 30,        // «внизу»: руки опущены, ноги вместе (%)
   setEndSec: 8,          // подход заканчивается после стольких секунд без повторений
   beep: true,
   voice: false,

@@ -234,12 +234,12 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .wins li { font-size: 17px; font-weight: 600; line-height: 1.35; }
 
 /* Плитки упражнений: у каждого упражнения свой цвет */
-.exercise-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.exercise-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .exercise {
   --tint: var(--lime);
   position: relative;
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  min-height: 150px;
+  min-height: 112px;
   padding: 14px 9px;
   border-radius: 22px;
   border: 1px solid var(--line);
@@ -252,6 +252,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .ex-pushup { --tint: var(--lime); }
 .ex-squat { --tint: var(--violet); }
 .ex-pullup { --tint: #3DB8FF; }
+.ex-jack { --tint: #FF5FA2; }
 .exercise.selected {
   border-color: var(--tint);
   box-shadow: 0 0 0 1px var(--tint), 0 14px 36px -14px var(--tint);
@@ -260,7 +261,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .ex-name {
   font-family: var(--display);
   font-style: italic; font-weight: 900;
-  font-size: clamp(14px, 3.85vw, 20px); line-height: 1;
+  font-size: 21px; line-height: 1;
   margin-top: 14px;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -379,6 +380,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .ic-pushup { color: var(--lime); }
 .ic-squat { color: #A88BFF; }
 .ic-pullup { color: #3DB8FF; }
+.ic-jack { color: #FF5FA2; }
 
 .set-list { list-style: none; margin: 0; padding: 0; }
 .set-row {

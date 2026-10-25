@@ -73,6 +73,7 @@ export const ACHIEVEMENTS = [
   { id: 'streak7', icon: '🗓️', name: 'Full Week', desc: 'Тренировки 7 дней подряд', test: (s) => s.longest >= 7 },
   { id: 'pullup100', icon: '🧗', name: 'Bar Boss', desc: '100 подтягиваний всего', test: (s) => s.totals.pullup >= 100 },
   { id: 'pushup500', icon: '🛡️', name: 'Iron Arms', desc: '500 отжиманий всего', test: (s) => s.totals.pushup >= 500 },
+  { id: 'jack500', icon: '⭐', name: 'Star Jumper', desc: '500 джампинг-джеков всего', test: (s) => (s.totals.jack || 0) >= 500 },
   { id: 'squat1000', icon: '🦵', name: 'Steel Legs', desc: '1000 приседаний всего', test: (s) => s.totals.squat >= 1000 },
   { id: 'total1000', icon: '🏅', name: 'Grinder', desc: '1000 повторений всего', test: (s) => s.totals.all >= 1000 },
   { id: 'total10000', icon: '🏆', name: 'Legend', desc: '10 000 повторений всего', test: (s) => s.totals.all >= 10000 },

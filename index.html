@@ -30,6 +30,12 @@
       </g>
       <circle cx="24" cy="9" r="4.4" fill="currentColor"/>
     </symbol>
+    <symbol id="ic-jack" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 16 V30"/><path d="M24 19 L13 8"/><path d="M24 19 L35 8"/><path d="M24 30 L14 43"/><path d="M24 30 L34 43"/>
+      </g>
+      <circle cx="24" cy="10" r="4.4" fill="currentColor"/>
+    </symbol>
     <symbol id="ic-pullup" viewBox="0 0 48 48">
       <g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M5 6 H43" opacity=".35"/><path d="M14 6 L18 19 L24 21 L30 19 L34 6"/><path d="M24 21 V33 L20 43"/><path d="M24 33 L28 43"/>
@@ -97,6 +103,11 @@
         <svg class="ex-icon" aria-hidden="true"><use href="#ic-pullup"/></svg>
         <span class="ex-name">Подтягивания</span>
         <span class="ex-note">Спина и руки</span>
+      </button>
+      <button class="exercise ex-jack" data-exercise="jack" role="radio" aria-checked="false">
+        <svg class="ex-icon" aria-hidden="true"><use href="#ic-jack"/></svg>
+        <span class="ex-name">Джампинг-джеки</span>
+        <span class="ex-note">Всё тело, кардио</span>
       </button>
     </div>
 
@@ -361,6 +372,17 @@
 
       <button type="button" id="settings-goal" class="secondary">Цель на день…</button>
       <button type="button" id="settings-data" class="secondary">Облако и резервная копия…</button>
+
+      <details>
+        <summary>Джампинг-джеки</summary>
+        <fieldset>
+          <legend>Руки и ноги вместе (0% — стоя, 100% — руки вверху, ноги врозь)</legend>
+          <label class="range">Наверху, если больше <output data-for="jackTop"></output>%
+            <input type="range" name="jackTop" min="50" max="95" step="1"></label>
+          <label class="range">Внизу, если меньше <output data-for="jackBottom"></output>%
+            <input type="range" name="jackBottom" min="5" max="50" step="1"></label>
+        </fieldset>
+      </details>
 
       <fieldset>
         <legend>Подход</legend>
