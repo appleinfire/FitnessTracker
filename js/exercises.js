@@ -279,8 +279,6 @@ class JumpingJack {
 // каждый перепрыг в любую сторону — повторение. Сторона определяется по щиколоткам:
 // обе слева от линии или обе справа.
 
-// Половина расстояния между двумя линиями, в долях ширины кадра (у ног).
-const TWO_LINES_HALF = 0.13;
 
 // Одна светящаяся линия на полу: от низа кадра (xBottom) до ног (xTop, top).
 function strip(ctx, xBottom, xTop, top, tint, flash) {
@@ -314,7 +312,9 @@ class LineHop {
 
   // mode: 'static' — линия стоит, прыгать через неё туда-обратно;
   //       'moving' — линия едет по полу, надо подпрыгнуть, когда она проезжает под ногами.
-  constructor(mode = 'static') {
+  // gap — расстояние между двумя линиями у ног, в % ширины кадра.
+  constructor(mode = 'static', gap = 44) {
+    this.half = Math.max(0.08, Math.min(0.35, gap / 200)); // половина расстояния, в долях ширины
     this.moving = mode === 'moving';
     this.double = mode === 'double'; // две линии: через первую, потом через вторую — одно очко
     this.noPauseEnd = this.moving; // в игре подход заканчивается, только когда ребёнок ушёл из кадра
@@ -385,7 +385,7 @@ class LineHop {
   // Две линии на расстоянии друг от друга: прыжок через первую (приземлиться между ними),
   // потом через вторую — одно очко. Потом так же обратно.
   twoLines(lm, xs, t) {
-    const g = TWO_LINES_HALF;
+    const g = this.half;
     const lo = Math.min(...xs);
     const hi = Math.max(...xs);
     let zone = null;
@@ -497,7 +497,7 @@ class LineHop {
     }
     // Две линии на расстоянии: у ног — как при подсчёте, ближе к телефону расходятся (перспектива).
     // Первая перепрыгнутая линия светится белым, пока ребёнок между линиями.
-    const g = TWO_LINES_HALF * w;
+    const g = this.half * w;
     const cx = this.lineX * w;
     ctx.save();
     ctx.fillStyle = this.mid ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)';
@@ -520,5 +520,5 @@ export const EXERCISES = {
   pushup: () => new Pushup(),
   pullup: () => new Pullup(),
   jack: () => new JumpingJack(),
-  line: (s) => new LineHop(s?.lineMode),
+  line: (s) => new LineHop(s?.lineMode, s?.lineGap),
 };
